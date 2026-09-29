@@ -59,10 +59,17 @@ export interface Phase2Summary {
   selectedCount: number;
   selectedSum: FractionType;
   selectedAverage: FractionType;
+  // 1. حساب الجذر على معدل الخانات (بالتقسيم على عدد الخانات)
   sqrtResult: DecimalSquareRootResult;
-  unsimplifiedAnswer: number; // الناتج النهائي (من غير تبسيط)
-  simplifiedAnswer: number; // الناتج النهائي (بالتبسيط)
+  unsimplifiedAnswer: number; // الناتج النهائي مع التقسيم (من غير تبسيط)
+  simplifiedAnswer: number; // الناتج النهائي مع التقسيم (بالتبسيط)
   reductionSteps: number[];
+
+  // 2. حساب الجذر على مجموع الخانات مباشرة (بدون تقسيم على عدد الخانات)
+  directSumSqrtResult: DecimalSquareRootResult;
+  directSumUnsimplifiedAnswer: number; // الناتج المباشر (من غير تبسيط - مثال: 60)
+  directSumSimplifiedAnswer: number; // الناتج المباشر (بالتبسيط - مثال: 6)
+  directSumReductionSteps: number[]; // مسار الاختزال المباشر (مثال: [60, 6])
 }
 
 export interface CalculationState {

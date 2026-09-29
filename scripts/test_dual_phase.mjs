@@ -169,18 +169,33 @@ function runDualPhase(chars, selectedIndices = null) {
   const selAvg = selSum.div(new Fraction(BigInt(divisor), ONE));
   const sqrt_p2 = selAvg.sqrtDecimal(60);
 
+  // Direct sum sqrt without division
+  const sqrt_directSum = selSum.sqrtDecimal(60);
+
   return {
     phase1: { seed, avg: avg_p1.toString(), sqrt: sqrt_p1.fullString.substring(0, 15) },
     phase2: {
       step6: step6_p2.map(f => f.toString()),
       selSum: selSum.toString(),
       selCount,
-      selAvg: selAvg.toString(),
-      sqrt: sqrt_p2.fullString.substring(0, 15),
-      first10: sqrt_p2.first10AfterDot,
-      unsimplified: sqrt_p2.unsimplifiedSum,
-      simplified: sqrt_p2.simplifiedSingleDigit,
-      steps: sqrt_p2.reductionSteps,
+      // With division (Average)
+      withDivision: {
+        selAvg: selAvg.toString(),
+        sqrt: sqrt_p2.fullString.substring(0, 15),
+        first10: sqrt_p2.first10AfterDot,
+        unsimplified: sqrt_p2.unsimplifiedSum,
+        simplified: sqrt_p2.simplifiedSingleDigit,
+        steps: sqrt_p2.reductionSteps,
+      },
+      // Without division (Direct Sum)
+      withoutDivision: {
+        sum: selSum.toString(),
+        sqrt: sqrt_directSum.fullString.substring(0, 15),
+        first10: sqrt_directSum.first10AfterDot,
+        unsimplified: sqrt_directSum.unsimplifiedSum,
+        simplified: sqrt_directSum.simplifiedSingleDigit,
+        steps: sqrt_directSum.reductionSteps,
+      },
     },
   };
 }

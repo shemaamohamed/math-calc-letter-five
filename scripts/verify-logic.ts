@@ -53,9 +53,23 @@ try {
   console.log(`Reduction Steps: [${result.phase2.reductionSteps.join(' -> ')}] (Expected: 46 -> 10 -> 1)`);
 
   if (result.phase2.unsimplifiedAnswer !== 46 || result.phase2.simplifiedAnswer !== 1) {
-    throw new Error('Phase 2 Final Answers mismatch!');
+    throw new Error('Phase 2 Final Answers (with division) mismatch!');
   }
-  console.log('✅ Phase 2 Final Answers 100% verified (Unsimplified: 46, Simplified: 1)!');
+  console.log('✅ Phase 2 Final Answers with division 100% verified (Unsimplified: 46, Simplified: 1)!');
+
+  // --- PHASE 2 DIRECT SUM (Without Division - Image 5 / Latest Note) ---
+  console.log('\n--- PHASE 2: DIRECT SUM WITHOUT DIVISION (New Feature) ---');
+  console.log(`Direct Sum Fraction: ${result.phase2.selectedSum.toString()} (Expected: 10455/98)`);
+  console.log(`Square Root: ${result.phase2.directSumSqrtResult.fullString.substring(0, 15)} (Expected ~ 10.3287788953...)`);
+  console.log(`First 10 Decimals: ${result.phase2.directSumSqrtResult.first10AfterDot} (Expected: 3287788953)`);
+  console.log(`Direct Sum Unsimplified Answer: ${result.phase2.directSumUnsimplifiedAnswer} (Expected: 60)`);
+  console.log(`Direct Sum Simplified Answer: ${result.phase2.directSumSimplifiedAnswer} (Expected: 6)`);
+  console.log(`Direct Sum Reduction Steps: [${result.phase2.directSumReductionSteps.join(' -> ')}] (Expected: 60 -> 6)`);
+
+  if (result.phase2.directSumUnsimplifiedAnswer !== 60 || result.phase2.directSumSimplifiedAnswer !== 6) {
+    throw new Error('Phase 2 Direct Sum Final Answers mismatch!');
+  }
+  console.log('✅ Phase 2 Direct Sum Final Answers 100% verified (Unsimplified: 60, Simplified: 6)!');
 
   console.log('\n==================================================');
   console.log('🎉 ALL DUAL-PHASE VERIFICATIONS PASSED PERFECTLY!');

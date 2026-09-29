@@ -196,12 +196,13 @@ export function executePhase2(
     });
   }
 
-  // Divisor is selectedCount (or 1 if none selected to avoid division by zero)
+  // 1. الطريقة الأولى: مع التقسيم على عدد الخانات المحددة (المتوسط)
   const divisor = selectedCount > 0 ? selectedCount : 1;
   const selectedAverage = selectedSum.div(new Fraction(BigInt(divisor), ONE));
-
-  // الجذر التربيعي لاستخراج أول 10 أرقام بعد الفاصلة
   const sqrtResult = selectedAverage.sqrtDecimal(60);
+
+  // 2. الطريقة الثانية: بدون تقسيم على عدد الخانات (على مجموع الخانات المحددة مباشرة)
+  const directSumSqrtResult = selectedSum.sqrtDecimal(60);
 
   return {
     step1Val,
@@ -211,10 +212,16 @@ export function executePhase2(
     selectedCount,
     selectedSum,
     selectedAverage,
+    // الطريقة الأولى (مع التقسيم)
     sqrtResult,
     unsimplifiedAnswer: sqrtResult.unsimplifiedSum,
     simplifiedAnswer: sqrtResult.simplifiedSingleDigit,
     reductionSteps: sqrtResult.reductionSteps,
+    // الطريقة الثانية (بدون تقسيم - مباشرة على مجموع الخانات)
+    directSumSqrtResult,
+    directSumUnsimplifiedAnswer: directSumSqrtResult.unsimplifiedSum,
+    directSumSimplifiedAnswer: directSumSqrtResult.simplifiedSingleDigit,
+    directSumReductionSteps: directSumSqrtResult.reductionSteps,
   };
 }
 
