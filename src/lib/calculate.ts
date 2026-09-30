@@ -31,9 +31,15 @@ export function executePhase1(chars: string[]): Phase1Summary {
     throw new Error('قائمة الحروف فارغة');
   }
 
-  // الخطوة 1: نضع 1 على كل خانة
+  // الخطوة 1: عدد طبيعي (1, 2, ..., n) لكل خانة ثم الجمع
+  const step1Vals: number[] = [];
+  let sum1BigInt = 0n;
+  for (let i = 1; i <= n; i++) {
+    step1Vals.push(i);
+    sum1BigInt += BigInt(i);
+  }
+  const sum1 = new Fraction(sum1BigInt, ONE);
   const step1Val = 1;
-  const sum1 = new Fraction(BigInt(n * step1Val), ONE);
 
   // الخطوة 2: عدد طبيعي (i ÷ n) × i = i^2 / n
   const step2Fractions = chars.map((_, i) => {
@@ -58,6 +64,7 @@ export function executePhase1(chars: string[]): Phase1Summary {
 
   // الخطوة 5: (قيمة خطوة 3 ÷ آخر خانة من خطوة 3) × 100
   const step5Fractions = step3Fractions.map(v3 => {
+    if (v3_last.isZero()) return new Fraction(0n, ONE);
     return v3.div(v3_last).mul(new Fraction(HUNDRED, ONE));
   });
   let sum5 = new Fraction(0n, ONE);
@@ -67,6 +74,7 @@ export function executePhase1(chars: string[]): Phase1Summary {
 
   // الخطوة 6: النسب المئوية وضربها بقيم الحروف من خطوة 4
   const step6RatioFractions = step5Fractions.map(v5 => {
+    if (sum5.isZero()) return new Fraction(0n, ONE);
     return v5.div(sum5).mul(new Fraction(HUNDRED, ONE));
   });
 
@@ -85,10 +93,12 @@ export function executePhase1(chars: string[]): Phase1Summary {
 
   // الجذر التربيعي واستخراج أول 10 أرقام بعد الفاصلة
   const sqrtResult = average.sqrtDecimal(60);
-  const seed = sqrtResult.unsimplifiedSum; // من غير تبسيط (مثال: 41)
+  // الحماية في حال كانت البذرة 0 (مثلاً إذا كان الناتج عدداً صحيحاً تاماً)
+  const seed = sqrtResult.unsimplifiedSum > 0 ? sqrtResult.unsimplifiedSum : 1;
 
   return {
     step1Val,
+    step1Vals,
     sum1,
     sum2,
     step3Fractions,
@@ -144,6 +154,7 @@ export function executePhase2(
 
   // الخطوة 5: (قيمة خطوة 3 ÷ آخر خانة من خطوة 3) × 100
   const step5Fractions = step3Fractions.map(v3 => {
+    if (v3_last.isZero()) return new Fraction(0n, ONE);
     return v3.div(v3_last).mul(new Fraction(HUNDRED, ONE));
   });
   let sum5 = new Fraction(0n, ONE);
@@ -153,6 +164,7 @@ export function executePhase2(
 
   // الخطوة 6: النسب المئوية وضربها بقيم الحروف من خطوة 4
   const step6RatioFractions = step5Fractions.map(v5 => {
+    if (sum5.isZero()) return new Fraction(0n, ONE);
     return v5.div(sum5).mul(new Fraction(HUNDRED, ONE));
   });
 
@@ -236,8 +248,8 @@ export function calculateArabicDualPhase(
   const { rawChars, normalizedChars } = normalizeArabicText(text);
   const totalChars = normalizedChars.length;
 
-  if (totalChars === 0) {
-    throw new Error('الرجاء إدخال نص عربي صحيح');
+  if (totalChars < 2) {
+    throw new Error('الرجاء إدخال كلمة أو نص يحتوي على حرفين على الأقل للتحليل');
   }
 
   // 1. تشغيل القسم الأول للحصول على البذرة (Seed)

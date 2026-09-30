@@ -40,6 +40,7 @@ export interface SlotData {
 
 export interface Phase1Summary {
   step1Val: number;
+  step1Vals?: number[];
   sum1: FractionType;
   sum2: FractionType;
   step3Fractions: FractionType[];
