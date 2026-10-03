@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import ArabicInput from '@/components/calculator/ArabicInput';
 import ResultView from '@/components/calculator/ResultView';
@@ -20,8 +21,14 @@ function HomePage() {
     toggleSlot,
     selectAll,
     deselectAll,
-  } = useWordCalculator();
+    invertSelection,
+  } = useWordCalculator('مدد');
   const router = useRouter();
+
+  // Run calculation for "مدد" on initial load to match the preview photos immediately
+  useEffect(() => {
+    calculate('مدد');
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
@@ -124,6 +131,7 @@ function HomePage() {
                 onToggleTransfer={toggleSlot}
                 onSelectAll={selectAll}
                 onDeselectAll={deselectAll}
+                onInvertSelection={invertSelection}
               />
             ) : (
               <div className="h-full min-h-[320px] rounded-2xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center text-slate-500 gap-4 group p-6 bg-slate-900/20 w-full min-w-0">

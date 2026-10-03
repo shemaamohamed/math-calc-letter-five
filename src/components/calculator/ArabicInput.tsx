@@ -36,7 +36,7 @@ export default function ArabicInput({ value, onChange }: ArabicInputProps) {
           <Keyboard className="w-3.5 h-3.5 text-purple-400" />
           النص العربي المستهدف
         </label>
-        <span className="text-[10px] font-bold text-purple-400/70 border border-purple-500/20 px-2 py-0.5 rounded-full bg-purple-500/5">
+        <span className="text-[10px] font-bold text-purple-300 border border-purple-500/30 px-2.5 py-0.5 rounded-full bg-purple-950/60">
           إدخال عربي
         </span>
       </div>

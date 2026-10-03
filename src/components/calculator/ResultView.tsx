@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { DualPhaseResult } from '@/lib/calculate';
+import { Fraction } from '@/lib/fractionMath';
 import {
   Sparkles,
   Check,
@@ -13,7 +14,12 @@ import {
   ChevronUp,
   Layers,
   Calculator,
-  Hash,
+  Zap,
+  Sliders,
+  LayoutGrid,
+  Table as TableIcon,
+  Trophy,
+  Star,
 } from 'lucide-react';
 
 interface ResultViewProps {
@@ -21,6 +27,7 @@ interface ResultViewProps {
   onToggleTransfer?: (index: number) => void;
   onSelectAll?: () => void;
   onDeselectAll?: () => void;
+  onInvertSelection?: () => void;
 }
 
 export default function ResultView({
@@ -28,749 +35,1038 @@ export default function ResultView({
   onToggleTransfer,
   onSelectAll,
   onDeselectAll,
+  onInvertSelection,
 }: ResultViewProps) {
-  const [showStepsBreakdown, setShowStepsBreakdown] = useState(false);
-  const [showPhase1Audit, setShowPhase1Audit] = useState(false);
-  const [viewMode, setViewMode] = useState<'both' | 'direct' | 'average'>('both');
+  // View mode: 'table' or 'cards' (Matching Photos 2, 3, 4)
+  const [slotsDisplayMode, setSlotsDisplayMode] = useState<'table' | 'cards'>('table');
+  // Collapsible Rules Details accordion (Photo 4)
+  const [showRulesDetails, setShowRulesDetails] = useState(false);
 
-  // Helper to render decimal digits with orange dots above them (matching handwritten notes)
-  const renderDottedDigits = (intPart: string, first10Digits: string) => {
-    const digits = first10Digits.split('');
-    return (
-      <div className="p-2.5 bg-black/60 rounded-xl border border-white/5 flex flex-wrap items-center justify-center gap-1.5 font-mono text-xs sm:text-sm dir-ltr">
-        <span className="text-slate-300 font-bold">{intPart}.</span>
-        <div className="inline-flex items-center gap-1 bg-white/[0.04] px-2 py-0.5 rounded-lg border border-white/10">
-          {digits.map((digit, idx) => (
-            <div key={idx} className="flex flex-col items-center">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mb-0.5 shadow-[0_0_6px_rgba(245,158,11,0.8)]" />
-              <span className="text-amber-300 font-black">{digit}</span>
-            </div>
-          ))}
-        </div>
-        <span className="text-slate-500 font-medium">...</span>
-      </div>
-    );
+  // Invert selection handler
+  const handleInvertSelection = () => {
+    if (onInvertSelection) {
+      onInvertSelection();
+    } else if (onToggleTransfer && result) {
+      result.phase2.slots.forEach((_, idx) => onToggleTransfer(idx));
+    }
   };
 
-  // Hook called unconditionally at the top
-  const selectedSlots = useMemo(() => {
-    if (!result) return [];
-    return result.phase2.slots.filter(s => s.isSelected);
+  // Memoized values for 6-step breakdown
+  const {
+    charGroups,
+    sum5Frac,
+    v3_last,
+    selectedSlots,
+    selectedSlotsFormula,
+  } = useMemo(() => {
+    if (!result) {
+      return {
+        charGroups: {},
+        sum5Frac: '0',
+        v3_last: '0',
+        selectedSlots: [],
+        selectedSlotsFormula: '',
+      };
+    }
+
+    const groups: Record<string, string> = {};
+    result.phase2.slots.forEach(s => {
+      groups[s.char] = `${s.step4GroupFrac.num}/${s.step4GroupFrac.den}`;
+    });
+
+    let s5 = new Fraction(0n, 1n);
+    result.phase2.slots.forEach(s => {
+      s5 = s5.add(new Fraction(s.step5Frac.num, s.step5Frac.den));
+    });
+
+    const lastIdx = result.phase2.slots.length - 1;
+    const lastV3 = lastIdx >= 0
+      ? `${result.phase2.slots[lastIdx].step3Frac.num}/${result.phase2.slots[lastIdx].step3Frac.den}`
+      : '0';
+
+    const selected = result.phase2.slots.filter(s => s.isSelected);
+    const formula = selected.length > 0
+      ? selected.map(s => `${s.finalValueFrac.num}/${s.finalValueFrac.den}`).join(' + ')
+      : '0';
+
+    return {
+      charGroups: groups,
+      sum5Frac: s5.toString(),
+      v3_last: lastV3,
+      selectedSlots: selected,
+      selectedSlotsFormula: formula,
+    };
   }, [result]);
 
-  if (!result) {
+  // Compute 4 Gates matching Photo 5 and Photo 3
+  const gates = useMemo(() => {
+    if (!result) return null;
+
+    const { phase2, totalChars } = result;
+    const { selectedSum, selectedAverage, selectedCount } = phase2;
+
+    const divisor = selectedCount > 0 ? selectedCount : 1;
+
+    // Helper: compute sqrt and extract digits
+    const computeGateDigits = (
+      fracNum: bigint,
+      fracDen: bigint,
+      fromWholeNumber: boolean
+    ) => {
+      const f = new Fraction(fracNum, fracDen);
+      const sqrtRes = f.sqrtDecimal(60);
+      const intPart = sqrtRes.intPart;
+      const fracPart = sqrtRes.fracPart;
+
+      let digits10 = '';
+      let displayNumber = '';
+
+      if (fromWholeNumber) {
+        // Extract 10 digits starting from the beginning of the whole number (including integer part)
+        const fullDigits = (intPart + fracPart).replace(/[^0-9]/g, '');
+        digits10 = fullDigits.substring(0, 10);
+        const intLen = intPart.length;
+        const neededFrac = Math.max(0, 10 - intLen);
+        displayNumber = intLen >= 10
+          ? intPart.substring(0, 10)
+          : `${intPart}.${fracPart.substring(0, neededFrac)}`;
+      } else {
+        // Extract 10 digits starting immediately after the decimal point
+        digits10 = fracPart.substring(0, 10);
+        displayNumber = `${intPart}.${digits10}`;
+      }
+
+      // Sum digits (Unsimplified)
+      const digitsList = digits10.split('').map(d => parseInt(d, 10)).filter(d => !isNaN(d));
+      const unsimplifiedSum = digitsList.reduce((acc, val) => acc + val, 0);
+
+      // Reduction steps
+      const steps: number[] = [unsimplifiedSum];
+      let curr = unsimplifiedSum;
+      while (curr >= 10) {
+        curr = curr
+          .toString()
+          .split('')
+          .map(d => parseInt(d, 10))
+          .reduce((acc, val) => acc + val, 0);
+        steps.push(curr);
+      }
+      const singleDigit = steps[steps.length - 1];
+
+      // In Photo 5, steps are rendered in RTL as e.g. "9 ➔ 45" or "1 ➔ 10 ➔ 37"
+      const reversedSteps = [...steps].reverse();
+
+      return {
+        displayNumber,
+        digits10,
+        unsimplifiedSum,
+        steps,
+        reversedSteps,
+        singleDigit,
+        intPart,
+        fracPart,
+      };
+    };
+
+    // Gate 1: الجواب الأول (√S - أول 10 أرقام من كامل العدد)
+    const g1 = computeGateDigits(selectedSum.num, selectedSum.den, true);
+
+    // Gate 2: الجواب الثاني (√(S/N) - أول 10 أرقام من كامل العدد)
+    const g2 = computeGateDigits(selectedAverage.num, selectedAverage.den, true);
+
+    // Gate 3: الجواب الثالث (√S - أول 10 أرقام بعد الفاصلة .)
+    const g3 = computeGateDigits(selectedSum.num, selectedSum.den, false);
+
+    // Gate 4: الجواب الرابع (√(S/N) - أول 10 أرقام بعد الفاصلة .)
+    const g4 = computeGateDigits(selectedAverage.num, selectedAverage.den, false);
+
+    return { g1, g2, g3, g4 };
+  }, [result]);
+
+  if (!result || !gates) {
     return null;
   }
 
-  const { phase1, phase2, normalizedChars, totalChars } = result;
+  const { phase2, totalChars } = result;
   const selectedCount = phase2.selectedCount;
-  const isAllSelected = selectedCount === totalChars && totalChars > 0;
-
-  // Invert Selection Handler
-  const handleInvertSelection = () => {
-    if (!onToggleTransfer) return;
-    phase2.slots.forEach((_, idx) => {
-      onToggleTransfer(idx);
-    });
-  };
 
   return (
-    <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 dir-rtl font-cairo w-full min-w-0">
-      {/* 1. TOP HEADER & PHASE 1 SEED BADGE */}
-      <div className="p-3.5 sm:p-4 bg-slate-900/90 rounded-2xl border border-purple-500/20 shadow-xl backdrop-blur-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full min-w-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-900/30 flex-shrink-0">
-            <Calculator className="w-5 h-5 text-white" />
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-3 duration-500 dir-rtl font-cairo w-full min-w-0">
+      {/* 1. TOP TRANSITION NAVIGATION BAR (Photo 1) */}
+      <div className="p-3 sm:p-4 bg-slate-900/90 rounded-2xl border border-purple-500/20 shadow-xl backdrop-blur-md space-y-3 w-full min-w-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-purple-600/30 border border-purple-500/40 flex items-center justify-center text-purple-300">
+              <Zap className="w-4 h-4 fill-purple-400 text-purple-400" />
+            </div>
+            <span className="text-xs sm:text-sm font-black text-slate-100">
+              شريط تصفح الأحرف والانتقال ({totalChars} حرف)
+            </span>
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm font-black text-white">الكلمة المحللة:</span>
-              <span className="text-sm sm:text-base font-black text-purple-300 font-sans tracking-wide">
-                &quot;{result.inputText}&quot;
-              </span>
-              <span className="text-[10px] text-slate-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/10 font-mono">
-                {totalChars} خانات
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-400">
-              <span>الأحرف الموحدة:</span>
-              <span className="font-bold text-slate-200">
-                [{normalizedChars.join(' ، ')}]
-              </span>
-            </div>
+          <div className="px-3 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/40 text-emerald-400 text-xs font-bold font-mono">
+            المنتقلة : {selectedCount}/{totalChars}
           </div>
         </div>
 
-        {/* Phase 1 Seed Indicator */}
-        <div className="flex items-center gap-2 bg-purple-950/40 border border-purple-500/30 rounded-xl p-2 px-3 flex-shrink-0">
-          <div className="text-right">
-            <span className="text-[10px] text-purple-300 block font-medium">
-              بذرة القسم الأول (Phase 1):
-            </span>
-            <div className="flex items-center gap-1.5">
-              <span className="text-lg font-black text-amber-300 font-mono">
-                {phase1.seed}
-              </span>
-              <span className="text-[9px] text-slate-400 font-normal">
-                (قيمة خطوة 1 في القسم الثاني)
-              </span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowPhase1Audit(!showPhase1Audit)}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-purple-300 hover:text-white transition-colors"
-            title="عرض تدقيق القسم الأول"
-          >
-            {showPhase1Audit ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
+        {/* Slot Pills strip */}
+        <div className="p-2 bg-[#060a14] rounded-xl border border-white/5 flex items-center gap-2 overflow-x-auto scrollbar-thin">
+          {phase2.slots.map((s, idx) => {
+            const isSelected = s.isSelected;
+            return (
+              <button
+                key={`nav-pill-${s.pos}`}
+                type="button"
+                onClick={() => onToggleTransfer?.(idx)}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0 ${
+                  isSelected
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-950/50'
+                    : 'bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5'
+                }`}
+              >
+                <span className="font-mono">{s.pos}:</span>
+                <span className="font-sans font-black">{s.char}</span>
+                <span className="font-mono dir-ltr text-[11px]">
+                  ({s.finalValueFrac.num.toString()}/{s.finalValueFrac.den.toString()})
+                </span>
+                {isSelected && <Check className="w-3.5 h-3.5 stroke-[3] text-emerald-400" />}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* PHASE 1 AUDIT DRAWER (Optional Collapsible) */}
-      {showPhase1Audit && (
-        <Card className="glass border-purple-500/25 bg-gradient-to-b from-purple-950/20 to-slate-900/40 animate-in fade-in duration-300">
-          <CardHeader className="py-2.5 px-4 border-b border-white/5">
-            <CardTitle className="text-xs font-bold text-purple-200 flex items-center gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-              تفاصيل المحرك المخفي (القسم الأول): القيمة الابتدائية = 1
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-3.5 space-y-2 text-xs">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-              <div className="p-2 rounded-lg bg-black/40 border border-white/5">
-                <span className="text-[10px] text-slate-400 block">مجموع خطوة 1 (S1):</span>
-                <span className="font-mono font-bold text-purple-300">{phase1.sum1.toString()}</span>
-              </div>
-              <div className="p-2 rounded-lg bg-black/40 border border-white/5">
-                <span className="text-[10px] text-slate-400 block">مجموع خطوة 2 (S2):</span>
-                <span className="font-mono font-bold text-purple-300">{phase1.sum2.toString()}</span>
-              </div>
-              <div className="p-2 rounded-lg bg-black/40 border border-white/5">
-                <span className="text-[10px] text-slate-400 block">مجموع خطوة 5 (S5):</span>
-                <span className="font-mono font-bold text-purple-300">{phase1.sum5.toString()}</span>
-              </div>
-              <div className="p-2 rounded-lg bg-black/40 border border-white/5">
-                <span className="text-[10px] text-slate-400 block">المتوسط (الجمع ÷ {totalChars}):</span>
-                <span className="font-mono font-bold text-purple-300">{phase1.average.toString()}</span>
-              </div>
-            </div>
-            <div className="p-2.5 bg-black/50 rounded-xl border border-white/5 space-y-1 font-mono text-[11px] dir-ltr text-center">
-              <span className="text-slate-400 text-[10px] block">
-                √({phase1.average.toString()}) = {phase1.sqrtResult.fullString.substring(0, 16)}...
-              </span>
-              <span className="text-amber-300 font-bold block">
-                أول 10 أرقام: {phase1.sqrtResult.first10AfterDot.split('').join(' + ')} = {phase1.seed}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 2. THE DUAL FINAL ANSWERS 🟨 (الأجوبة النهائية المعتمدة: بدون تقسيم ومع التقسيم) */}
-      <div className="space-y-4 w-full min-w-0">
-        {/* View Mode Selector Tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 p-2 bg-slate-900/80 rounded-2xl border border-white/10 backdrop-blur-md">
-          <div className="flex items-center gap-2 px-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs sm:text-sm font-black text-slate-200">
-              خيارات استخراج الناتج النهائي:
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 p-1 bg-black/40 rounded-xl border border-white/5 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setViewMode('both')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'both'
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-900/40'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              عرض الطريقتين معاً
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('direct')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                viewMode === 'direct'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/40'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <span>بدون تقسيم (مجموع الخانات)</span>
-              <span className="text-[10px] px-1 py-0.2 bg-emerald-400/20 text-emerald-300 rounded font-normal">جديد</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('average')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'average'
-                  ? 'bg-amber-600 text-white shadow-md shadow-amber-900/40'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              مع التقسيم (المعدل)
-            </button>
-          </div>
-        </div>
-
-        {/* METHOD 1: بدون تقسيم على عدد الخانات (على مجموع الخانات مباشرة - المطلوب في الورقة) */}
-        {(viewMode === 'both' || viewMode === 'direct') && (
-          <div className="space-y-3 p-4 rounded-2xl bg-gradient-to-b from-emerald-950/25 via-slate-900/70 to-slate-900/90 border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.15)] relative overflow-hidden">
-            <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500" />
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-emerald-500/20">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
-                <h3 className="text-sm sm:text-base font-black text-emerald-300">
-                  الجذر التربيعي لمجموع الخانات مباشرة (من غير تقسيم على عدد الخانات)
-                </h3>
-              </div>
-              <div className="flex items-center gap-2 self-start sm:self-auto">
-                <span className="text-[11px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-3 py-0.5 rounded-full font-mono font-bold dir-ltr">
-                  √({phase2.selectedSum.toString()})
-                </span>
-                <span className="text-[10px] text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
-                  تبسيط وغير تبسيط
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* DIRECT SUM - ANSWER 1: من غير تبسيط */}
-              <Card className="glass overflow-hidden border-emerald-500/30 bg-black/40 shadow-inner relative group">
-                <CardHeader className="py-2.5 px-4 border-b border-white/10 bg-emerald-950/30">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                      <span className="text-xs sm:text-sm font-black text-emerald-300 tracking-wide uppercase">
-                        الناتج النهائي (من غير تبسيط)
-                      </span>
-                    </div>
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
-                      غير مبسط
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    مجموع أول 10 أرقام عشرية للجذر التربيعي لمجموع الخانات مباشرة
-                  </p>
-                </CardHeader>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-black/70 rounded-2xl border border-emerald-500/20 shadow-inner">
-                    <div className="text-right">
-                      <span className="text-[10px] text-slate-400 block font-medium">الجواب الرقمي المباشر:</span>
-                      <span className="text-xs text-emerald-200/80 font-mono">
-                        مجموع الأرقام العشرية الـ 10
-                      </span>
-                    </div>
-                    <div className="text-4xl sm:text-5xl font-black text-emerald-400 font-mono drop-shadow-[0_0_12px_rgba(16,185,129,0.5)]">
-                      {phase2.directSumUnsimplifiedAnswer}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5 p-2.5 bg-white/[0.02] rounded-xl border border-white/5 text-[11px] font-mono">
-                    <div className="flex justify-between items-center text-slate-400">
-                      <span>مجموع الخانات المختارة:</span>
-                      <span className="text-emerald-300 font-bold dir-ltr">{phase2.selectedSum.toString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-slate-400">
-                      <span>الجذر التربيعي المباشر (بدون تقسيم):</span>
-                      <span className="text-cyan-300 font-bold dir-ltr">
-                        √({phase2.selectedSum.toString()})
-                      </span>
-                    </div>
-
-                    {renderDottedDigits(phase2.directSumSqrtResult.intPart, phase2.directSumSqrtResult.first10AfterDot)}
-
-                    <div className="text-center text-[10px] text-emerald-400/90 font-sans pt-1">
-                      {phase2.directSumSqrtResult.first10AfterDot.split('').join(' + ')} ={' '}
-                      <strong className="text-emerald-300 text-xs font-mono">{phase2.directSumUnsimplifiedAnswer}</strong>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* DIRECT SUM - ANSWER 2: بالتبسيط */}
-              <Card className="glass overflow-hidden border-teal-500/30 bg-black/40 shadow-inner relative group">
-                <CardHeader className="py-2.5 px-4 border-b border-white/10 bg-teal-950/30">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-teal-400" />
-                      <span className="text-xs sm:text-sm font-black text-teal-300 tracking-wide uppercase">
-                        الناتج النهائي (بالتبسيط)
-                      </span>
-                    </div>
-                    <span className="text-[10px] bg-teal-500/20 text-teal-300 border border-teal-500/30 px-2 py-0.5 rounded-full font-bold">
-                      مبسط (Single Root)
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    اختزال رقم {phase2.directSumUnsimplifiedAnswer} حتى الوصول إلى رقم مفرد
-                  </p>
-                </CardHeader>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-black/70 rounded-2xl border border-teal-500/20 shadow-inner">
-                    <div className="text-right">
-                      <span className="text-[10px] text-slate-400 block font-medium">الرقم المفرد النهائي:</span>
-                      <span className="text-xs text-teal-200/80 font-mono">
-                        Single Digit Reduction
-                      </span>
-                    </div>
-                    <div className="text-4xl sm:text-5xl font-black text-teal-300 font-mono drop-shadow-[0_0_12px_rgba(20,184,166,0.5)]">
-                      {phase2.directSumSimplifiedAnswer}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 p-2.5 bg-white/[0.02] rounded-xl border border-white/5 text-[11px]">
-                    <span className="text-[10px] text-slate-400 block font-medium">
-                      مسار الاختزال والتبسيط:
-                    </span>
-                    <div className="flex items-center justify-center gap-2 p-3 bg-black/60 rounded-xl border border-white/5 font-mono text-sm">
-                      {phase2.directSumReductionSteps.map((step, idx) => (
-                        <div key={`direct-step-${idx}`} className="flex items-center gap-2">
-                          <span
-                            className={`px-3 py-1 rounded-lg font-black ${
-                              idx === phase2.directSumReductionSteps.length - 1
-                                ? 'bg-teal-500/30 text-teal-300 border border-teal-500/50 text-base'
-                                : 'bg-white/5 text-slate-300 border border-white/10'
-                            }`}
-                          >
-                            {step}
-                          </span>
-                          {idx < phase2.directSumReductionSteps.length - 1 && (
-                            <span className="text-teal-400 font-bold">➔</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="text-center text-[10px] text-slate-400 pt-1">
-                      تم اختزال الرقم {phase2.directSumUnsimplifiedAnswer} إلى الرقم الفردي النهائي ({phase2.directSumSimplifiedAnswer})
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
-
-        {/* METHOD 2: مع التقسيم على عدد الخانات (المعدل) */}
-        {(viewMode === 'both' || viewMode === 'average') && (
-          <div className="space-y-3 p-4 rounded-2xl bg-gradient-to-b from-amber-950/20 via-slate-900/60 to-slate-900/90 border border-amber-500/30 shadow-[0_0_25px_rgba(245,158,11,0.1)] relative overflow-hidden">
-            <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-amber-500 to-yellow-400" />
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-amber-500/20">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
-                <h3 className="text-sm sm:text-base font-black text-amber-300">
-                  الجذر التربيعي لمعدل الخانات (بالتقسيم على عدد الخانات: {selectedCount})
-                </h3>
-              </div>
-              <span className="text-[11px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-0.5 rounded-full font-mono font-bold dir-ltr self-start sm:self-auto">
-                √({phase2.selectedAverage.toString()})
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* AVERAGE - ANSWER 1: من غير تبسيط */}
-              <Card className="glass overflow-hidden border-amber-500/30 bg-black/40 shadow-inner relative group">
-                <CardHeader className="py-2.5 px-4 border-b border-white/10 bg-amber-950/30">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                      <span className="text-xs sm:text-sm font-black text-amber-300 tracking-wide uppercase">
-                        الناتج النهائي (من غير تبسيط)
-                      </span>
-                    </div>
-                    <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">
-                      غير مبسط
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    جمع أول 10 أرقام عشرية للجذر التربيعي لمعدل الخانات المختارة
-                  </p>
-                </CardHeader>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-black/70 rounded-2xl border border-amber-500/20 shadow-inner">
-                    <div className="text-right">
-                      <span className="text-[10px] text-slate-400 block font-medium">الجواب الرقمي للمعدل:</span>
-                      <span className="text-xs text-amber-200/80 font-mono">
-                        مجموع الأرقام العشرية الـ 10
-                      </span>
-                    </div>
-                    <div className="text-4xl sm:text-5xl font-black text-amber-400 font-mono drop-shadow-[0_0_12px_rgba(245,158,11,0.4)]">
-                      {phase2.unsimplifiedAnswer}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5 p-2.5 bg-white/[0.02] rounded-xl border border-white/5 text-[11px] font-mono">
-                    <div className="flex justify-between items-center text-slate-400">
-                      <span>جمع الخانات المختارة:</span>
-                      <span className="text-amber-300 font-bold dir-ltr">{phase2.selectedSum.toString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-slate-400">
-                      <span>التقسيم على عدد الخانات ({selectedCount}):</span>
-                      <span className="text-amber-300 font-bold dir-ltr">{phase2.selectedAverage.toString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-slate-400">
-                      <span>الجذر التربيعي للكسر:</span>
-                      <span className="text-cyan-300 font-bold dir-ltr">
-                        √({phase2.selectedAverage.toString()})
-                      </span>
-                    </div>
-
-                    {renderDottedDigits(phase2.sqrtResult.intPart, phase2.sqrtResult.first10AfterDot)}
-
-                    <div className="text-center text-[10px] text-amber-400/90 font-sans pt-1">
-                      {phase2.sqrtResult.first10AfterDot.split('').join(' + ')} ={' '}
-                      <strong className="text-amber-300 text-xs font-mono">{phase2.unsimplifiedAnswer}</strong>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* AVERAGE - ANSWER 2: بالتبسيط */}
-              <Card className="glass overflow-hidden border-yellow-500/30 bg-black/40 shadow-inner relative group">
-                <CardHeader className="py-2.5 px-4 border-b border-white/10 bg-yellow-950/30">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
-                      <span className="text-xs sm:text-sm font-black text-yellow-300 tracking-wide uppercase">
-                        الناتج النهائي (بالتبسيط)
-                      </span>
-                    </div>
-                    <span className="text-[10px] bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 px-2 py-0.5 rounded-full font-bold">
-                      مبسط (Single Root)
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    اختزال ناتج الجمع المتكرر للأرقام حتى الحصول على رقم مفرد
-                  </p>
-                </CardHeader>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-black/70 rounded-2xl border border-yellow-500/20 shadow-inner">
-                    <div className="text-right">
-                      <span className="text-[10px] text-slate-400 block font-medium">الرقم المفرد النهائي:</span>
-                      <span className="text-xs text-yellow-200/80 font-mono">
-                        Single Digit Reduction
-                      </span>
-                    </div>
-                    <div className="text-4xl sm:text-5xl font-black text-yellow-400 font-mono drop-shadow-[0_0_12px_rgba(234,179,8,0.4)]">
-                      {phase2.simplifiedAnswer}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 p-2.5 bg-white/[0.02] rounded-xl border border-white/5 text-[11px]">
-                    <span className="text-[10px] text-slate-400 block font-medium">
-                      مسار الاختزال والتبسيط:
-                    </span>
-                    <div className="flex items-center justify-center gap-2 p-3 bg-black/60 rounded-xl border border-white/5 font-mono text-sm">
-                      {phase2.reductionSteps.map((step, idx) => (
-                        <div key={`average-step-${idx}`} className="flex items-center gap-2">
-                          <span
-                            className={`px-3 py-1 rounded-lg font-black ${
-                              idx === phase2.reductionSteps.length - 1
-                                ? 'bg-yellow-500/30 text-yellow-300 border border-yellow-500/50 text-base'
-                                : 'bg-white/5 text-slate-300 border border-white/10'
-                            }`}
-                          >
-                            {step}
-                          </span>
-                          {idx < phase2.reductionSteps.length - 1 && (
-                            <span className="text-yellow-400 font-bold">➔</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="text-center text-[10px] text-slate-400 pt-1">
-                      تم اختزال الرقم {phase2.unsimplifiedAnswer} إلى الرقم الفردي النهائي ({phase2.simplifiedAnswer})
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 3. PHASE 2 SLOTS & TRANSITION BUTTONS (مطابقة ورقة Image 1) */}
-      <Card className="glass border-white/10 shadow-2xl overflow-hidden w-full min-w-0">
+      {/* 2. PHASE 1 / STEP 1 CARD (Photo 1) */}
+      <Card className="glass border-white/10 shadow-xl overflow-hidden w-full min-w-0">
         <CardHeader className="py-3 px-4 border-b border-white/5 bg-white/[0.01]">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
-                <Layers className="w-4 h-4 text-purple-300" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-purple-600/30 border border-purple-500/40 flex items-center justify-center text-purple-200 font-bold text-xs">
+                I
               </div>
               <div>
-                <CardTitle className="text-sm sm:text-base font-bold text-slate-100">
-                  خانات القسم الثاني وأزرار الانتقال (القيم الكسرية النهائية)
-                </CardTitle>
-                <p className="text-[10px] sm:text-[11px] text-slate-400">
-                  تفعيل أو تعطيل &quot;زر انتقال&quot; لكل خانة يؤثر لحظياً على المجموع والمتوسط والجذر
+                <h2 className="text-sm sm:text-base font-black text-slate-100">
+                  الخطوة الأولى: وضع قيمة ({phase2.step1Val}) على كل خانة وتجميع الخانات
+                </h2>
+                <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">
+                  وضع {phase2.step1Val} على كل خانة ➔ جمع قيم الخانات ➔ الناتج النهائي {phase2.sum1.num.toString()} = S1
                 </p>
               </div>
             </div>
-
-            {/* Quick Actions Buttons */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <button
-                type="button"
-                onClick={onSelectAll}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                  isAllSelected
-                    ? 'bg-purple-600/30 text-purple-300 border border-purple-500/40'
-                    : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/5'
-                }`}
-              >
-                <CheckSquare className="w-3.5 h-3.5" />
-                تحديد الكل
-              </button>
-              <button
-                type="button"
-                onClick={onDeselectAll}
-                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white/5 text-slate-300 hover:bg-white/10 border border-white/5 transition-all flex items-center gap-1 cursor-pointer"
-              >
-                <Square className="w-3.5 h-3.5" />
-                إلغاء الكل
-              </button>
-              <button
-                type="button"
-                onClick={handleInvertSelection}
-                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white/5 text-slate-300 hover:bg-white/10 border border-white/5 transition-all flex items-center gap-1 cursor-pointer"
-              >
-                <ArrowLeftRight className="w-3.5 h-3.5" />
-                عكس
-              </button>
-              <div className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono font-bold">
-                {selectedCount} / {totalChars} مختارة
-              </div>
+            <div className="px-3 py-1 rounded-full bg-purple-950/60 border border-purple-500/40 text-purple-200 text-xs font-black font-mono">
+              {phase2.sum1.num.toString()}/{phase2.sum1.den.toString()}
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-4 space-y-4">
-          {/* Slot Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {phase2.slots.map((slot, idx) => {
-              const isSelected = slot.isSelected;
-              return (
-                <div
-                  key={`slot-card-${slot.pos}`}
-                  onClick={() => onToggleTransfer?.(idx)}
-                  className={`p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer select-none relative overflow-hidden group ${
-                    isSelected
-                      ? 'bg-gradient-to-b from-purple-950/40 to-slate-900/80 border-purple-500/40 shadow-lg shadow-purple-950/30 ring-1 ring-purple-500/20'
-                      : 'bg-white/[0.02] border-white/5 opacity-50 hover:opacity-80'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-mono text-slate-400">
-                      الخانة #{slot.pos}
-                    </span>
-                    {/* زر انتقال Checkbox */}
-                    <div
-                      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold transition-all ${
-                        isSelected
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                          : 'bg-white/5 text-slate-500 border border-white/10'
-                      }`}
-                    >
-                      <div
-                        className={`w-3.5 h-3.5 rounded flex items-center justify-center border transition-all ${
-                          isSelected
-                            ? 'bg-emerald-500 border-emerald-400 text-black'
-                            : 'border-slate-500 bg-transparent'
-                        }`}
-                      >
-                        {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                      </div>
-                      <span>زر انتقال</span>
-                    </div>
-                  </div>
 
-                  {/* Character and Final Fraction (Image 1 Style: [✓] 123/196 = م) */}
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center font-bold text-lg text-purple-200">
-                        {slot.char}
-                      </div>
-                      {slot.originalChar && slot.originalChar !== slot.char && (
-                        <span className="text-[10px] text-slate-500">
-                          (الأصل: {slot.originalChar})
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-left font-mono">
-                      <div className="text-xl sm:text-2xl font-black text-amber-300 dir-ltr">
-                        {slot.finalValueFrac.toString()}
-                      </div>
-                      <span className="text-[9px] text-slate-400 dir-rtl block">
-                        = {slot.char}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Micro breakdown */}
-                  <div className="mt-2 pt-2 border-t border-white/5 text-[10px] font-mono text-slate-400 flex justify-between items-center dir-ltr">
-                    <span className="text-purple-300">
-                      {slot.step6RatioFrac.den === 1n
-                        ? `${slot.step6RatioFrac.num}%`
-                        : `${slot.step6RatioFrac.num}/${slot.step6RatioFrac.den}%`}
-                    </span>
-                    <span>×</span>
-                    <span>{slot.step4GroupFrac.toString()}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Quick Sum Bar matching Image 1 and Image 5 handwriting */}
-          <div className="p-3 bg-black/50 rounded-2xl border border-white/5 space-y-2.5 text-xs font-mono">
-            {/* Top: Sum Formula */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="flex items-center gap-2 text-slate-300 overflow-x-auto whitespace-nowrap py-1">
-                <span className="text-slate-400 font-sans font-bold">صيغة جمع الخانات:</span>
-                <span className="dir-ltr text-amber-300 font-bold">
-                  {selectedSlots.map(s => s.finalValueFrac.toString()).join(' + ') || '0'}
-                </span>
-                <span>=</span>
-                <span className="text-emerald-300 font-black dir-ltr text-sm">
-                  {phase2.selectedSum.toString()}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-400 flex-shrink-0">
-                <span className="font-sans">المتوسط ({selectedCount} خانات):</span>
-                <span className="text-amber-300 font-black dir-ltr text-sm">
-                  {phase2.selectedAverage.toString()}
-                </span>
-              </div>
+        <CardContent className="p-3 sm:p-4 space-y-4">
+          {/* Subheading: 1. وضع القيمة الثابتة لكل خانة */}
+          <div>
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300 mb-2.5">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+              <span>• 1. وضع القيمة الثابتة ({phase2.step1Val}) لكل خانة:</span>
             </div>
 
-            {/* Bottom: Both Sqrt Results Pathways */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-white/5 text-[11px]">
-              {/* Pathway 1: Without Division */}
-              <div className="p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                <span className="text-emerald-300 font-sans font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  بدون تقسيم (مجموع مباشر):
-                </span>
-                <span className="dir-ltr text-slate-200 font-mono">
-                  √({phase2.selectedSum.toString()}) ➔{' '}
-                  <span className="text-emerald-300 font-bold">{phase2.directSumUnsimplifiedAnswer}</span>{' '}
-                  ➔{' '}
-                  <span className="text-teal-300 font-bold">({phase2.directSumSimplifiedAnswer})</span>
-                </span>
-              </div>
+            <div className="p-3.5 bg-black/50 rounded-2xl border border-white/5 flex items-center justify-center gap-3 flex-wrap">
+              {phase2.slots.map(s => (
+                <div
+                  key={`step1-slot-${s.pos}`}
+                  className="w-20 sm:w-24 p-2.5 rounded-xl bg-slate-900/90 border border-purple-500/30 text-center flex flex-col items-center gap-1 shadow-md shadow-purple-950/20"
+                >
+                  <span className="text-[10px] text-slate-400 font-mono">الخانة #{s.pos}</span>
+                  <span className="text-xs sm:text-sm font-bold text-amber-400 font-mono dir-rtl">
+                    = {s.step1Val}
+                  </span>
+                  <span className="text-xl sm:text-2xl font-black text-white font-sans mt-0.5">
+                    {s.char}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-              {/* Pathway 2: With Division */}
-              <div className="p-2.5 rounded-xl bg-amber-950/20 border border-amber-500/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                <span className="text-amber-300 font-sans font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                  مع التقسيم (المعدل ÷ {selectedCount}):
+          {/* Bottom 3 Summary Cards matching Photo 1 */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* 2. خطوة التجميع */}
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col justify-between">
+              <span className="text-[11px] font-bold text-slate-300 block mb-2">
+                2. خطوة التجميع (جمع قيم الخانات):
+              </span>
+              <div className="p-2.5 bg-black/60 rounded-xl border border-white/5 text-center font-mono">
+                <span className="text-cyan-400 font-black text-sm dir-rtl">
+                  {phase2.sum1.num.toString()}
                 </span>
-                <span className="dir-ltr text-slate-200 font-mono">
-                  √({phase2.selectedAverage.toString()}) ➔{' '}
-                  <span className="text-amber-300 font-bold">{phase2.unsimplifiedAnswer}</span>{' '}
-                  ➔{' '}
-                  <span className="text-yellow-300 font-bold">({phase2.simplifiedAnswer})</span>
+                <span className="text-slate-300 font-bold text-xs mx-1">=</span>
+                <span className="text-slate-300 font-bold text-xs">
+                  {phase2.slots.map(s => s.step1Val).join(' + ')}
                 </span>
               </div>
+              <span className="text-[10px] text-slate-500 text-center mt-2 block">
+                مجموع قيم الخانات = {phase2.sum1.num.toString()}
+              </span>
+            </div>
+
+            {/* 3. منطق المعادلة */}
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col justify-between">
+              <span className="text-[11px] font-bold text-slate-300 block mb-2">
+                3. منطق المعادلة:
+              </span>
+              <div className="p-2.5 bg-black/60 rounded-xl border border-white/5 text-center font-mono">
+                <span className="text-amber-400 font-black text-xs sm:text-sm">
+                  Σ(قيم الخانات {phase2.step1Val}) = S1
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-500 text-center mt-2 block font-mono">
+                {phase2.sum1.num.toString()} = {phase2.slots.map(s => s.step1Val).join(' + ')}
+              </span>
+            </div>
+
+            {/* 4. الناتج النهائي للخطوة الأولى */}
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col justify-between">
+              <span className="text-[11px] font-bold text-slate-300 block mb-2">
+                4. الناتج النهائي للخطوة الأولى (S1):
+              </span>
+              <div className="p-2.5 bg-black/60 rounded-xl border border-white/5 text-center font-mono">
+                <span className="text-white font-black text-base sm:text-lg">
+                  {phase2.sum1.num.toString()}/{phase2.sum1.den.toString()}
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-500 text-center mt-2 block">
+                الناتج المعتمد للخطوة الأولى = {phase2.sum1.num.toString()}
+              </span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* 4. STEP BREAKDOWN ACCORDION (Steps 1 to 6 Details) */}
-      <Card className="glass border-white/5 overflow-hidden w-full min-w-0">
-        <button
-          type="button"
-          onClick={() => setShowStepsBreakdown(!showStepsBreakdown)}
-          className="w-full py-3 px-4 flex items-center justify-between text-right hover:bg-white/[0.02] transition-colors cursor-pointer"
-        >
-          <div className="flex items-center gap-2">
-            <Hash className="w-4 h-4 text-purple-400" />
-            <span className="text-xs sm:text-sm font-bold text-slate-200">
-              جدول التدقيق الرياضي التفصيلي (الخطوات من 1 إلى 6 للقسم الثاني)
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-purple-300">
-            <span>{showStepsBreakdown ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}</span>
-            {showStepsBreakdown ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </div>
-        </button>
+      {/* 3. PRIMARY 6-STEP TABLE & CARDS SECTION (Photos 2, 3, 4) */}
+      <Card className="glass border-white/10 shadow-2xl overflow-hidden w-full min-w-0">
+        <CardHeader className="p-3 sm:p-4 border-b border-white/10 bg-slate-900/60">
+          <div className="flex flex-col gap-3">
+            {/* Title & View Mode & Rules Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300">
+                  <Calculator className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm sm:text-base font-black text-slate-100">
+                    جدول التحليل والخطوات الست (Arbitrary-Precision 6 Steps)
+                  </h2>
+                  <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">
+                    حسابات كسرية دقيقة 100% بدون أي تقريب وفق الشرح والورقة اليدوية مع أزرار الانتقال التفاعلية.
+                  </p>
+                </div>
+              </div>
 
-        {showStepsBreakdown && (
-          <CardContent className="p-4 border-t border-white/5 space-y-4 animate-in fade-in duration-300">
-            {/* Step Summary Badges */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-center text-xs font-mono">
-              <div className="p-2 rounded-xl bg-black/40 border border-white/5">
-                <span className="text-[10px] text-slate-400 font-sans block">الخطوة 1 (S1):</span>
-                <span className="text-purple-300 font-bold">{phase2.sum1.toString()}</span>
-              </div>
-              <div className="p-2 rounded-xl bg-black/40 border border-white/5">
-                <span className="text-[10px] text-slate-400 font-sans block">الخطوة 2 (S2):</span>
-                <span className="text-purple-300 font-bold">{phase2.sum2.toString()}</span>
-              </div>
-              <div className="p-2 rounded-xl bg-black/40 border border-white/5">
-                <span className="text-[10px] text-slate-400 font-sans block">آخر خانة خطوة 3:</span>
-                <span className="text-purple-300 font-bold">
-                  {phase2.slots[phase2.slots.length - 1]?.step3Frac.toString()}
-                </span>
-              </div>
-              <div className="p-2 rounded-xl bg-black/40 border border-white/5">
-                <span className="text-[10px] text-slate-400 font-sans block">مجموع خطوة 5 (S5):</span>
-                <span className="text-purple-300 font-bold">
-                  {phase1.sum5.toString()}
-                </span>
-              </div>
-              <div className="p-2 rounded-xl bg-black/40 border border-white/5">
-                <span className="text-[10px] text-slate-400 font-sans block">المجموع المختار:</span>
-                <span className="text-amber-300 font-bold">{phase2.selectedSum.toString()}</span>
-              </div>
-              <div className="p-2 rounded-xl bg-black/40 border border-white/5">
-                <span className="text-[10px] text-slate-400 font-sans block">المتوسط (÷ {selectedCount}):</span>
-                <span className="text-emerald-300 font-bold">{phase2.selectedAverage.toString()}</span>
+              <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                {/* Rules Details Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowRulesDetails(!showRulesDetails)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-950/40 hover:bg-purple-900/50 text-purple-200 border border-purple-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Layers className="w-3.5 h-3.5 text-purple-400" />
+                  <span>تفاصيل القواعد</span>
+                  {showRulesDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+
+                {/* View Toggle: بطاقات / جدول */}
+                <div className="flex items-center p-1 bg-black/60 rounded-xl border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setSlotsDisplayMode('cards')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      slotsDisplayMode === 'cards'
+                        ? 'bg-purple-600 text-white shadow-md shadow-purple-900/50'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>بطاقات</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSlotsDisplayMode('table')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      slotsDisplayMode === 'table'
+                        ? 'bg-purple-600 text-white shadow-md shadow-purple-900/50'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <TableIcon className="w-3.5 h-3.5" />
+                    <span>جدول</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Steps Detailed Table */}
-            <div className="overflow-x-auto rounded-xl border border-white/5 bg-black/40">
-              <table className="w-full text-xs text-right border-collapse">
+            {/* Control Actions Row (Photos 2, 4) */}
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/5">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onSelectAll}
+                  className="px-3 py-1 rounded-lg text-xs font-bold bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <CheckSquare className="w-3.5 h-3.5 text-slate-400" />
+                  <span>تحديد الكل ({totalChars})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onDeselectAll}
+                  className="px-3 py-1 rounded-lg text-xs font-bold bg-amber-950/20 text-amber-300 hover:bg-amber-900/30 border border-amber-500/40 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Square className="w-3.5 h-3.5 text-amber-400" />
+                  <span>إلغاء التحديد</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleInvertSelection}
+                className="px-3 py-1 rounded-lg text-xs font-bold bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5 text-slate-400" />
+                <span>عكس</span>
+              </button>
+            </div>
+
+            {/* Collapsible Rules Details: Mathematical 6-Step Breakdown (Photo 4) */}
+            {showRulesDetails && (
+              <div className="pt-2 animate-in fade-in duration-300 space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>ملخص الخطوات الرياضية الست (Mathematical 6-Step Breakdown):</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-center">
+                  {/* Step 1 */}
+                  <div className="p-2.5 rounded-xl bg-black/60 border border-white/10 flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold">1. مجموع خطوة 1 (S1):</span>
+                    <span className="text-sm font-black text-white font-mono my-1">
+                      {phase2.sum1.num.toString()}/{phase2.sum1.den.toString()}
+                    </span>
+                    <span className="text-[9px] text-slate-400">الخانة الأخيرة = {phase2.step1Val}</span>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="p-2.5 rounded-xl bg-black/60 border border-white/10 flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold">2. مجموع خطوة 2 (S2):</span>
+                    <span className="text-sm font-black text-cyan-300 font-mono my-1">
+                      {phase2.sum2.num.toString()}/{phase2.sum2.den.toString()}
+                    </span>
+                    <span className="text-[9px] text-slate-400">(الخانة ÷ آخر خانة × الخانة)</span>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className="p-2.5 rounded-xl bg-black/60 border border-white/10 flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold">3. مجموع خطوة 3 (S3):</span>
+                    <span className="text-sm font-black text-white font-mono my-1">
+                      {phase2.sum1.num.toString()}/{phase2.sum1.den.toString()}
+                    </span>
+                    <span className="text-[9px] text-slate-400">(خطوة 2 ÷ S2) × S1</span>
+                  </div>
+
+                  {/* Step 4 */}
+                  <div className="p-2.5 rounded-xl bg-black/60 border border-white/10 flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold">4. المتغيرات (جمع طبيعي):</span>
+                    <div className="flex flex-wrap items-center justify-center gap-1 my-1">
+                      {Object.entries(charGroups).map(([c, val]) => (
+                        <span
+                          key={`group-pill-${c}`}
+                          className="px-2 py-0.5 rounded-md bg-purple-950/70 border border-purple-500/40 text-purple-200 text-[10px] font-mono font-bold"
+                        >
+                          {c} : {val}
+                        </span>
+                      ))}
+                    </div>
+                    <span className="text-[9px] text-slate-400">تجميع نواتج خطوة 3</span>
+                  </div>
+
+                  {/* Step 5 */}
+                  <div className="p-2.5 rounded-xl bg-black/60 border border-white/10 flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold">5. مجموع خطوة 5 (S5):</span>
+                    <span className="text-sm font-black text-amber-300 font-mono my-1">{sum5Frac}</span>
+                    <span className="text-[9px] text-slate-400">(خطوة 3 ÷ {v3_last} × 100)</span>
+                  </div>
+
+                  {/* Step 6 */}
+                  <div className="p-2.5 rounded-xl bg-black/60 border border-white/10 flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold">6. مجموع نسب خطوة 6:</span>
+                    <span className="text-sm font-black text-emerald-400 font-mono my-1">100%</span>
+                    <span className="text-[9px] text-slate-400">(خطوة 5 ÷ 100 × S5)</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-3 sm:p-4 space-y-4">
+          {/* Table View (Photo 2 & 4) */}
+          {slotsDisplayMode === 'table' ? (
+            <div className="overflow-x-auto rounded-xl border border-white/10 bg-black/60 shadow-inner scrollbar-thin">
+              <table className="w-full text-xs text-right border-collapse min-w-[880px]">
                 <thead>
-                  <tr className="border-b border-white/10 bg-white/[0.02] text-slate-400 font-bold">
-                    <th className="p-2.5">الخانة</th>
-                    <th className="p-2.5">الحرف</th>
-                    <th className="p-2.5">خطوة 1 (البذرة)</th>
-                    <th className="p-2.5">خطوة 2 (i²÷n)</th>
-                    <th className="p-2.5">خطوة 3 ((v2÷S2)×S1)</th>
-                    <th className="p-2.5">خطوة 4 (جمع الحرف)</th>
-                    <th className="p-2.5">خطوة 5 (×100)</th>
-                    <th className="p-2.5">خطوة 6 (النسبة %)</th>
-                    <th className="p-2.5">الناتج المعتمد</th>
+                  <tr className="border-b border-white/10 bg-white/[0.02] text-slate-400 font-bold text-[11px]">
+                    <th className="p-2.5 text-center">الخانة (الترتيب)</th>
+                    <th className="p-2.5 text-center">حرف</th>
+                    <th className="p-2.5 text-center">خطوة 1 (القيمة {phase2.step1Val})</th>
+                    <th className="p-2.5 text-center">خطوة 2 (+ أخر خانة × نفسها)</th>
+                    <th className="p-2.5 text-center">خطوة 3 (S2 × S1 ÷)</th>
+                    <th className="p-2.5 text-center">خطوة 4 (المتغير الحرفي)</th>
+                    <th className="p-2.5 text-center">خطوة 5 (+ آخر 3 × 100)</th>
+                    <th className="p-2.5 text-center">خطوة 6 (النسبة: ÷ 100 × S5)</th>
+                    <th className="p-2.5 text-center">الناتج المعتمد (المتغير × النسبة 6)</th>
+                    <th className="p-2.5 text-center">زر الانتقال (تحديد/تمرير)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 font-mono">
-                  {phase2.slots.map(s => (
-                    <tr key={`table-row-${s.pos}`} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="p-2.5 text-slate-400 font-bold">#{s.pos}</td>
-                      <td className="p-2.5 text-slate-200 font-sans font-black">{s.char}</td>
-                      <td className="p-2.5 text-purple-300">{s.step1Val}</td>
-                      <td className="p-2.5 text-slate-300">{s.step2Frac.toString()}</td>
-                      <td className="p-2.5 text-slate-300">{s.step3Frac.toString()}</td>
-                      <td className="p-2.5 text-amber-300 font-bold">{s.step4GroupFrac.toString()}</td>
-                      <td className="p-2.5 text-slate-300">{s.step5Frac.toString()}</td>
-                      <td className="p-2.5 text-cyan-300 font-bold">
-                        {s.step6RatioFrac.den === 1n
-                          ? `${s.step6RatioFrac.num}%`
-                          : `${s.step6RatioFrac.num}/${s.step6RatioFrac.den}%`}
-                      </td>
-                      <td className="p-2.5 text-emerald-400 font-black">{s.finalValueFrac.toString()}</td>
-                    </tr>
-                  ))}
+                  {phase2.slots.map((s, idx) => {
+                    const isSelected = s.isSelected;
+                    return (
+                      <tr
+                        key={`table-row-${s.pos}`}
+                        className={`transition-colors ${
+                          isSelected ? 'bg-emerald-950/10 hover:bg-emerald-950/20' : 'opacity-40 hover:opacity-70'
+                        }`}
+                      >
+                        {/* الخانة */}
+                        <td className="p-2.5 text-center">
+                          <span className="inline-block px-2.5 py-0.5 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 font-bold text-xs">
+                            #{s.pos}
+                          </span>
+                        </td>
+
+                        {/* الحرف */}
+                        <td className="p-2.5 text-center font-sans">
+                          <div className="w-8 h-8 rounded-lg bg-purple-950/60 border border-purple-500/40 text-purple-200 font-black text-sm flex items-center justify-center mx-auto shadow-sm">
+                            {s.char}
+                          </div>
+                        </td>
+
+                        {/* خطوة 1 */}
+                        <td className="p-2.5 text-center text-white font-bold">
+                          {s.step1Val}
+                        </td>
+
+                        {/* خطوة 2 */}
+                        <td className="p-2.5 text-center">
+                          <div className="font-bold text-cyan-300 dir-ltr">
+                            {s.step2Frac.num.toString()}/{s.step2Frac.den.toString()}
+                          </div>
+                          <span className="text-[9px] text-slate-500 block font-sans">
+                            {s.pos} × {totalChars} ÷ {s.pos}
+                          </span>
+                        </td>
+
+                        {/* خطوة 3 */}
+                        <td className="p-2.5 text-center">
+                          <div className="font-bold text-white dir-ltr">
+                            {s.step3Frac.num.toString()}/{s.step3Frac.den.toString()}
+                          </div>
+                          <span className="text-[9px] text-slate-500 block font-sans">
+                            {phase2.sum1.num.toString()} × {phase2.sum2.num.toString()}/{phase2.sum2.den.toString()} ÷ {s.step2Frac.num.toString()}/{s.step2Frac.den.toString()}
+                          </span>
+                        </td>
+
+                        {/* خطوة 4 */}
+                        <td className="p-2.5 text-center">
+                          <div className="font-bold text-purple-300 dir-ltr">
+                            {s.step4GroupFrac.num.toString()}/{s.step4GroupFrac.den.toString()}
+                          </div>
+                          <span className="text-[9px] text-slate-500 block font-sans">({s.char})</span>
+                        </td>
+
+                        {/* خطوة 5 */}
+                        <td className="p-2.5 text-center">
+                          <div className="font-bold text-amber-300 dir-ltr">
+                            {s.step5Frac.num.toString()}/{s.step5Frac.den.toString()}
+                          </div>
+                          <span className="text-[9px] text-slate-500 block font-sans">
+                            100 × {v3_last} ÷ {s.step3Frac.num.toString()}/{s.step3Frac.den.toString()}
+                          </span>
+                        </td>
+
+                        {/* خطوة 6 */}
+                        <td className="p-2.5 text-center">
+                          <div className="font-bold text-cyan-300 dir-ltr">
+                            {s.step6RatioFrac.den === 1n
+                              ? `${s.step6RatioFrac.num.toString()}%`
+                              : `${s.step6RatioFrac.num.toString()}/${s.step6RatioFrac.den.toString()}%`}
+                          </div>
+                          <span className="text-[9px] text-slate-500 block font-sans">
+                            100 × {sum5Frac} ÷ {s.step5Frac.num.toString()}/{s.step5Frac.den.toString()}
+                          </span>
+                        </td>
+
+                        {/* الناتج المعتمد */}
+                        <td className="p-2.5 text-center">
+                          <div className="font-black text-emerald-400 text-sm dir-ltr">
+                            {s.finalValueFrac.num.toString()}/{s.finalValueFrac.den.toString()}
+                          </div>
+                          <span className="text-[9px] text-emerald-400/70 block font-sans">
+                            {s.step6RatioFrac.den === 1n
+                              ? `${s.step6RatioFrac.num.toString()}%`
+                              : `${s.step6RatioFrac.num.toString()}/${s.step6RatioFrac.den.toString()}%`}{' '}
+                            × {s.step4GroupFrac.num.toString()}/{s.step4GroupFrac.den.toString()}
+                          </span>
+                        </td>
+
+                        {/* زر الانتقال */}
+                        <td className="p-2.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => onToggleTransfer?.(idx)}
+                            className={`px-3 py-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 mx-auto cursor-pointer shadow-sm ${
+                              isSelected
+                                ? 'bg-[#10b981] hover:bg-[#059669] text-white shadow-emerald-950/40'
+                                : 'bg-white/5 text-slate-400 hover:text-white border border-white/10'
+                            }`}
+                          >
+                            {isSelected ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : <Square className="w-3.5 h-3.5" />}
+                            <span>انتقال</span>
+                            <ArrowLeftRight className="w-3 h-3 text-white/80" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-          </CardContent>
-        )}
+          ) : (
+            /* Cards View (Photo 3) */
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {phase2.slots.map((s, idx) => {
+                const isSelected = s.isSelected;
+                return (
+                  <div
+                    key={`cards-slot-${s.pos}`}
+                    className={`p-3.5 rounded-2xl border transition-all duration-200 select-none relative overflow-hidden ${
+                      isSelected
+                        ? 'bg-gradient-to-b from-purple-950/30 to-slate-900/80 border-purple-500/40 shadow-lg shadow-purple-950/30'
+                        : 'bg-white/[0.02] border-white/5 opacity-50 hover:opacity-80'
+                    }`}
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400 font-mono">الخانة #{s.pos}</span>
+                        <span className="w-7 h-7 rounded-lg bg-purple-950/60 border border-purple-500/40 text-purple-200 font-black text-sm flex items-center justify-center">
+                          {s.char}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onToggleTransfer?.(idx)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#10b981] hover:bg-[#059669] text-white shadow-sm'
+                            : 'bg-white/5 text-slate-400 border border-white/10'
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                        <span>انتقال</span>
+                        <ArrowLeftRight className="w-3 h-3 text-white/80" />
+                      </button>
+                    </div>
+
+                    {/* Body: Micro steps list matching Photo 3 */}
+                    <div className="p-2.5 bg-black/40 rounded-xl border border-white/5 space-y-1.5 text-[10px] font-mono text-slate-400 leading-relaxed">
+                      <div>
+                        1 (القيمة: {s.step1Val}) .. 2 (تعديل: {s.step2Frac.num.toString()}/{s.step2Frac.den.toString()}) .. 3 (مركب: {s.step3Frac.num.toString()}/{s.step3Frac.den.toString()})
+                      </div>
+                      <div>
+                        4 (المتغير: {s.step4GroupFrac.num.toString()}/{s.step4GroupFrac.den.toString()}) .. 5 (+ آخر 3: {s.step5Frac.num.toString()}/{s.step5Frac.den.toString()}) .. 6 (النسبة: {s.step6RatioFrac.den === 1n ? `${s.step6RatioFrac.num}%` : `${s.step6RatioFrac.num}/${s.step6RatioFrac.den}%`})
+                      </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between">
+                      <span className="text-xs text-slate-400 font-sans">الناتج المعتمد:</span>
+                      <span className="text-base font-black text-cyan-400 font-mono dir-ltr">
+                        {s.finalValueFrac.num.toString()}/{s.finalValueFrac.den.toString()}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Selected Cells Summary Banner (Bottom of Photo 2 & 3) */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900/80 to-teal-950/40 border border-emerald-500/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300">
+                <Sliders className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-black text-emerald-300">
+                  ملخص الخانات المنتقلة (Selected Cells Summary)
+                </h3>
+                <p className="text-[11px] text-slate-300 mt-0.5">
+                  عدد الخانات المنتقلة (SNS): <strong className="text-white font-mono">{selectedCount}</strong> / {totalChars} | المجموع الكسري (SSS):{' '}
+                  <strong className="text-emerald-300 font-mono font-bold dir-ltr">
+                    {phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()}
+                  </strong>
+                </p>
+              </div>
+            </div>
+
+            <div className="px-4 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/60 text-emerald-300 font-black font-mono text-sm dir-ltr self-start sm:self-auto shadow-inner">
+              S = {phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()}
+            </div>
+          </div>
+        </CardContent>
       </Card>
+
+      {/* 4. THE 4 GATES RESULTS SECTION (Photos 3 & 5) */}
+      <div className="space-y-4">
+        {/* Section Header */}
+        <div className="flex items-center justify-between flex-wrap gap-2 pt-2">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🟨</span>
+            <h2 className="text-base sm:text-lg font-black text-slate-100 flex items-center gap-2">
+              <span>القسم الثاني: قسم النتائج (بوابات الإجابات الأربعة 🟨)</span>
+              <Sparkles className="w-4 h-4 text-amber-400" />
+            </h2>
+          </div>
+          <div className="px-3 py-1 rounded-lg bg-black/60 border border-white/10 text-slate-400 text-xs font-mono font-bold">
+            Gates Output 4
+          </div>
+        </div>
+
+        {/* 4 Gates Grid (2 Columns) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* GATE 1: الجواب الأول 🏆 (Photo 5 - Right Card) */}
+          <Card className="glass overflow-hidden border-amber-500/30 bg-black/40 shadow-inner relative group">
+            <CardHeader className="py-3 px-4 border-b border-white/10 bg-amber-950/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🟨</span>
+                  <span className="text-sm sm:text-base font-black text-amber-300 tracking-wide flex items-center gap-1.5">
+                    <span>الجواب الأول</span>
+                    <Trophy className="w-4 h-4 text-amber-400" />
+                  </span>
+                </div>
+              </div>
+              <p className="text-[11px] font-bold text-slate-200 mt-1">
+                الجذر التربيعي لمجموع الخانات (أول 10 أرقام من كامل العدد)
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                جمع الخانات المحددة ➔ سكوير رووت للناتج ➔ حساب أول 10 من الجواب
+              </p>
+            </CardHeader>
+
+            <CardContent className="p-4 space-y-3">
+              {/* Box 1: صيغة جمع الخانات */}
+              <div className="space-y-1">
+                <span className="text-[11px] font-bold text-slate-400 block">
+                  1. صيغة جمع الخانات المحددة:
+                </span>
+                <div className="p-2 bg-black/60 rounded-xl border border-white/5 text-xs font-mono text-center overflow-x-auto">
+                  <span className="dir-ltr text-amber-300 font-bold whitespace-nowrap">
+                    S = {selectedSlotsFormula} ={' '}
+                    <span className="text-emerald-400 font-black">
+                      {phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()}
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Box 2: الجذر التربيعي للكسر */}
+              <div className="flex items-center justify-between p-2 bg-black/40 rounded-xl border border-white/5">
+                <span className="text-xs font-bold text-amber-400 font-mono dir-ltr">
+                  ({phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()})√
+                </span>
+                <span className="text-[11px] font-bold text-slate-400">
+                  2. الجذر التربيعي للكسر:
+                </span>
+              </div>
+
+              {/* Box 3: الناتج العشري المستخرج (10 أرقام) */}
+              <div className="space-y-1">
+                <span className="text-[11px] font-bold text-amber-300 block text-right">
+                  3. الناتج العشري المستخرج (10 أرقام):
+                </span>
+                <div className="p-3 bg-black/80 rounded-xl border border-amber-500/20 text-center shadow-inner">
+                  <span className="text-2xl sm:text-3xl font-black text-amber-400 font-mono tracking-widest dir-ltr inline-block">
+                    {gates.g1.displayNumber}
+                  </span>
+                </div>
+              </div>
+
+              {/* Box 4: الأرقام المستخرجة ومسار الاختزال */}
+              <div className="pt-2 border-t border-white/5 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-amber-400 dir-ltr text-sm">
+                    {gates.g1.digits10}
+                  </span>
+                  <span className="text-slate-400">الأرقام ال 10 المستخرجة:</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-black text-amber-300 dir-ltr">
+                    {gates.g1.reversedSteps.join(' ➔ ')}
+                  </span>
+                  <span className="text-slate-400">4. خطوات الاختزال والجمع:</span>
+                </div>
+
+                {/* Final Single Digit Badge */}
+                <div className="pt-2 flex justify-center">
+                  <div className="w-10 h-10 rounded-full bg-amber-500/20 border-2 border-amber-500/60 text-amber-300 font-black text-xl flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+                    {gates.g1.singleDigit}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* GATE 2: الجواب الثاني 🟊 (Photo 5 - Left Card) */}
+          <Card className="glass overflow-hidden border-cyan-500/30 bg-black/40 shadow-inner relative group">
+            <CardHeader className="py-3 px-4 border-b border-white/10 bg-cyan-950/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🟨</span>
+                  <span className="text-sm sm:text-base font-black text-cyan-300 tracking-wide flex items-center gap-1.5">
+                    <span>الجواب الثاني</span>
+                    <Star className="w-4 h-4 text-cyan-400 fill-cyan-400" />
+                  </span>
+                </div>
+              </div>
+              <p className="text-[11px] font-bold text-slate-200 mt-1">
+                الجذر التربيعي لـ (المجموع ÷ عدد الخانات) (أول 10 أرقام من كامل العدد)
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                جمع الخانات ➔ تقسيم على عدد الخانات ➔ سكوير رووت ➔ حساب أول 10 من الجواب
+              </p>
+            </CardHeader>
+
+            <CardContent className="p-4 space-y-3">
+              {/* Box 1: صيغة جمع الخانات المحددة */}
+              <div className="space-y-1">
+                <span className="text-[11px] font-bold text-slate-400 block">
+                  1. صيغة جمع الخانات المحددة:
+                </span>
+                <div className="p-2 bg-black/60 rounded-xl border border-white/5 text-xs font-mono text-center overflow-x-auto">
+                  <span className="dir-ltr text-cyan-300 font-bold whitespace-nowrap">
+                    {phase2.selectedAverage.num.toString()}/{phase2.selectedAverage.den.toString()} ={' '}
+                    {selectedCount} ÷ {phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Box 2: الجذر التربيعي للكسر */}
+              <div className="flex items-center justify-between p-2 bg-black/40 rounded-xl border border-white/5">
+                <span className="text-xs font-bold text-cyan-400 font-mono dir-ltr">
+                  ({phase2.selectedAverage.num.toString()}/{phase2.selectedAverage.den.toString()})√
+                </span>
+                <span className="text-[11px] font-bold text-slate-400">
+                  2. الجذر التربيعي للكسر:
+                </span>
+              </div>
+
+              {/* Box 3: الناتج العشري المستخرج (10 أرقام) */}
+              <div className="space-y-1">
+                <span className="text-[11px] font-bold text-cyan-300 block text-right">
+                  3. الناتج العشري المستخرج (10 أرقام):
+                </span>
+                <div className="p-3 bg-black/80 rounded-xl border border-cyan-500/20 text-center shadow-inner">
+                  <span className="text-2xl sm:text-3xl font-black text-cyan-400 font-mono tracking-widest dir-ltr inline-block">
+                    {gates.g2.displayNumber}
+                  </span>
+                </div>
+              </div>
+
+              {/* Box 4: الأرقام المستخرجة ومسار الاختزال */}
+              <div className="pt-2 border-t border-white/5 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-cyan-400 dir-ltr text-sm">
+                    {gates.g2.digits10}
+                  </span>
+                  <span className="text-slate-400">الأرقام ال 10 المستخرجة:</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-black text-cyan-300 dir-ltr">
+                    {gates.g2.reversedSteps.join(' ➔ ')}
+                  </span>
+                  <span className="text-slate-400">4. خطوات الاختزال والجمع:</span>
+                </div>
+
+                {/* Final Single Digit Badge */}
+                <div className="pt-2 flex justify-center">
+                  <div className="w-10 h-10 rounded-full bg-cyan-500/20 border-2 border-cyan-500/60 text-cyan-300 font-black text-xl flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+                    {gates.g2.singleDigit}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* GATE 3: الجواب الثالث ⚡ (√S - أول 10 أرقام بعد الفاصلة .) */}
+          <Card className="glass overflow-hidden border-purple-500/30 bg-black/40 shadow-inner relative group">
+            <CardHeader className="py-3 px-4 border-b border-white/10 bg-purple-950/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🟨</span>
+                  <span className="text-sm sm:text-base font-black text-purple-300 tracking-wide flex items-center gap-1.5">
+                    <span>الجواب الثالث</span>
+                    <Zap className="w-4 h-4 text-purple-400 fill-purple-400" />
+                  </span>
+                </div>
+              </div>
+              <p className="text-[11px] font-bold text-slate-200 mt-1">
+                الجذر التربيعي لمجموع الخانات (أول 10 أرقام بعد الفاصلة .)
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                جمع الخانات المحددة ➔ سكوير رووت للناتج ➔ حساب أول 10 بعد الفاصلة
+              </p>
+            </CardHeader>
+
+            <CardContent className="p-4 space-y-3">
+              {/* Box 1 */}
+              <div className="space-y-1">
+                <span className="text-[11px] font-bold text-slate-400 block">
+                  1. صيغة جمع الخانات المحددة:
+                </span>
+                <div className="p-2 bg-black/60 rounded-xl border border-white/5 text-xs font-mono text-center overflow-x-auto">
+                  <span className="dir-ltr text-purple-300 font-bold whitespace-nowrap">
+                    S = {phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Box 2 */}
+              <div className="flex items-center justify-between p-2 bg-black/40 rounded-xl border border-white/5">
+                <span className="text-xs font-bold text-purple-400 font-mono dir-ltr">
+                  ({phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()})√
+                </span>
+                <span className="text-[11px] font-bold text-slate-400">
+                  2. الجذر التربيعي للكسر:
+                </span>
+              </div>
+
+              {/* Box 3 */}
+              <div className="space-y-1">
+                <span className="text-[11px] font-bold text-purple-300 block text-right">
+                  3. الناتج العشري المستخرج (10 أرقام بعد الفاصلة):
+                </span>
+                <div className="p-3 bg-black/80 rounded-xl border border-purple-500/20 text-center shadow-inner">
+                  <span className="text-2xl sm:text-3xl font-black text-purple-300 font-mono tracking-widest dir-ltr inline-block">
+                    {gates.g3.displayNumber}
+                  </span>
+                </div>
+              </div>
+
+              {/* Box 4 */}
+              <div className="pt-2 border-t border-white/5 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-purple-400 dir-ltr text-sm">
+                    {gates.g3.digits10}
+                  </span>
+                  <span className="text-slate-400">الأرقام ال 10 المستخرجة (بعد الفاصلة):</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-black text-purple-300 dir-ltr">
+                    {gates.g3.reversedSteps.join(' ➔ ')}
+                  </span>
+                  <span className="text-slate-400">4. خطوات الاختزال والجمع:</span>
+                </div>
+
+                <div className="pt-2 flex justify-center">
+                  <div className="w-10 h-10 rounded-full bg-purple-500/20 border-2 border-purple-500/60 text-purple-300 font-black text-xl flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                    {gates.g3.singleDigit}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* GATE 4: الجواب الرابع 🔢 (√(S/N) - أول 10 أرقام بعد الفاصلة .) */}
+          <Card className="glass overflow-hidden border-emerald-500/30 bg-black/40 shadow-inner relative group">
+            <CardHeader className="py-3 px-4 border-b border-white/10 bg-emerald-950/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🟨</span>
+                  <span className="text-sm sm:text-base font-black text-emerald-300 tracking-wide flex items-center gap-1.5">
+                    <span>الجواب الرابع</span>
+                    <span className="font-mono text-sm">#4</span>
+                  </span>
+                </div>
+              </div>
+              <p className="text-[11px] font-bold text-slate-200 mt-1">
+                الجذر التربيعي لـ (المجموع ÷ عدد الخانات) (أول 10 أرقام بعد الفاصلة .)
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                جمع الخانات ➔ تقسيم على عدد الخانات ➔ سكوير رووت ➔ حساب أول 10 بعد الفاصلة
+              </p>
+            </CardHeader>
+
+            <CardContent className="p-4 space-y-3">
+              {/* Box 1 */}
+              <div className="space-y-1">
+                <span className="text-[11px] font-bold text-slate-400 block">
+                  1. صيغة جمع الخانات المحددة:
+                </span>
+                <div className="p-2 bg-black/60 rounded-xl border border-white/5 text-xs font-mono text-center overflow-x-auto">
+                  <span className="dir-ltr text-emerald-300 font-bold whitespace-nowrap">
+                    {phase2.selectedAverage.num.toString()}/{phase2.selectedAverage.den.toString()} ={' '}
+                    {selectedCount} ÷ {phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Box 2 */}
+              <div className="flex items-center justify-between p-2 bg-black/40 rounded-xl border border-white/5">
+                <span className="text-xs font-bold text-emerald-400 font-mono dir-ltr">
+                  ({phase2.selectedAverage.num.toString()}/{phase2.selectedAverage.den.toString()})√
+                </span>
+                <span className="text-[11px] font-bold text-slate-400">
+                  2. الجذر التربيعي للكسر:
+                </span>
+              </div>
+
+              {/* Box 3 */}
+              <div className="space-y-1">
+                <span className="text-[11px] font-bold text-emerald-300 block text-right">
+                  3. الناتج العشري المستخرج (10 أرقام بعد الفاصلة):
+                </span>
+                <div className="p-3 bg-black/80 rounded-xl border border-emerald-500/20 text-center shadow-inner">
+                  <span className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono tracking-widest dir-ltr inline-block">
+                    {gates.g4.displayNumber}
+                  </span>
+                </div>
+              </div>
+
+              {/* Box 4 */}
+              <div className="pt-2 border-t border-white/5 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-emerald-400 dir-ltr text-sm">
+                    {gates.g4.digits10}
+                  </span>
+                  <span className="text-slate-400">الأرقام ال 10 المستخرجة (بعد الفاصلة):</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-black text-emerald-300 dir-ltr">
+                    {gates.g4.reversedSteps.join(' ➔ ')}
+                  </span>
+                  <span className="text-slate-400">4. خطوات الاختزال والجمع:</span>
+                </div>
+
+                <div className="pt-2 flex justify-center">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 border-2 border-emerald-500/60 text-emerald-300 font-black text-xl flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                    {gates.g4.singleDigit}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
