@@ -18,7 +18,7 @@ import {
   LayoutGrid,
   Info,
   Layers,
-  Award,
+  Trophy,
 } from 'lucide-react';
 
 interface WordCalculatorUIProps {
@@ -113,7 +113,7 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
       {/* CALCULATION RESULTS (Rendered only when result exists) */}
       {result && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-500">
-          {/* Header Summary with Phase 1 Seed (Hidden Engine Output) */}
+          {/* Header Summary with Phase 1 Seed */}
           <div className="p-4 bg-slate-900/90 rounded-2xl border border-purple-500/20 shadow-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md">
@@ -135,7 +135,6 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
               </div>
             </div>
 
-            {/* Phase 1 Hidden Seed Badge */}
             <div className="flex items-center gap-2 bg-purple-950/50 border border-purple-500/30 rounded-xl py-2 px-3 self-start sm:self-auto shadow-inner">
               <div className="text-right">
                 <span className="text-[10px] text-purple-300 block font-medium">
@@ -158,32 +157,30 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
           {/* ============================================================ */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 px-1">
-              <Award className="w-4 h-4 text-amber-400" />
+              <Trophy className="w-5 h-5 text-amber-400" />
               <span className="text-xs sm:text-sm font-black text-slate-200">
-                قسم النتائج النهائي (4 أجوبة)
+                قسم النتائج النهائي (4 أجوبة فقط)
               </span>
             </div>
 
             {/* ── الجواب الثالث ── */}
-            <div className="space-y-3 p-4 rounded-2xl bg-gradient-to-b from-emerald-950/25 via-slate-900/70 to-slate-900/90 border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.15)] relative overflow-hidden">
-              <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500" />
+            <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-purple-950/30 via-slate-900/80 to-slate-900/90 border border-purple-500/40 shadow-[0_0_30px_rgba(168,85,247,0.15)] relative overflow-hidden">
+              <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-purple-500 via-indigo-400 to-cyan-500" />
 
-              {/* عنوان الجواب الثالث */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-emerald-500/20">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-purple-500/20">
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
-                  <h3 className="text-sm sm:text-base font-black text-emerald-300">
-                    🏆 الجواب الثالث: الجذر التربيعي لمجموع الخانات (أول 10 أرقام من كامل العدد)
+                  <span className="w-3 h-3 rounded-full bg-purple-400 animate-ping" />
+                  <h3 className="text-sm sm:text-base font-black text-purple-300">
+                    🏆 الجواب الثالث: الجذر التربيعي لمجموع الخانات (أول 10 أرقام بعد الفاصلة)
                   </h3>
                 </div>
                 <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
-                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-3 py-0.5 rounded-full font-bold dir-ltr">
+                  <span className="bg-purple-500/20 text-purple-300 border border-purple-500/40 px-3 py-0.5 rounded-full font-bold dir-ltr">
                     √({result.phase2.selectedSum.num.toString()}/{result.phase2.selectedSum.den.toString()})
                   </span>
                 </div>
               </div>
 
-              {/* التفاصيل الحسابية */}
               <div className="p-3 bg-black/60 rounded-xl border border-white/5 space-y-2 text-xs font-mono">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300">
                   <span className="font-sans font-bold text-slate-400">1. صيغة جمع الخانات المحددة:</span>
@@ -193,7 +190,7 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                       .map(s => `${s.finalValueFrac.num.toString()}/${s.finalValueFrac.den.toString()}`)
                       .join(' + ') || '0'}{' '}
                     ={' '}
-                    <span className="text-emerald-400 font-black">
+                    <span className="text-purple-400 font-black">
                       {result.phase2.selectedSum.num.toString()}/{result.phase2.selectedSum.den.toString()}
                     </span>
                   </span>
@@ -208,15 +205,15 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
 
                 <div className="space-y-1.5 pt-1 border-t border-white/5">
                   <span className="font-sans font-bold text-slate-400 block">
-                    3. الناتج العشري المستخرج (10 أرقام):
+                    3. الناتج العشري المستخرج (10 أرقام بعد الفاصلة):
                   </span>
                   {renderDottedDigits(
                     result.phase2.directSumSqrtResult.intPart,
                     result.phase2.directSumSqrtResult.first10AfterDot
                   )}
-                  <div className="text-center text-[10px] text-emerald-400 font-sans pt-0.5">
+                  <div className="text-center text-[10px] text-purple-300 font-sans pt-0.5">
                     {result.phase2.directSumSqrtResult.first10AfterDot.split('').join(' + ')} ={' '}
-                    <strong className="text-emerald-300 text-xs font-mono">
+                    <strong className="text-purple-200 text-xs font-mono">
                       {result.phase2.directSumUnsimplifiedAnswer}
                     </strong>
                   </div>
@@ -225,7 +222,107 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
 
               {/* الخانتان للجواب الثالث */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                {/* خانة: من غير تبسيط */}
+                <Card className="glass overflow-hidden border-purple-500/30 bg-black/40 shadow-inner">
+                  <CardHeader className="py-2.5 px-4 border-b border-white/10 bg-purple-950/30">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs sm:text-sm font-black text-purple-300">
+                        من غير تبسيط
+                      </span>
+                      <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">
+                        Unsimplified
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <span className="text-xs text-slate-400">مجموع الأرقام العشرية الـ 10:</span>
+                    <div className="text-4xl font-black text-purple-400 font-mono drop-shadow-[0_0_12px_rgba(168,85,247,0.5)]">
+                      {result.phase2.directSumUnsimplifiedAnswer}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="glass overflow-hidden border-indigo-500/30 bg-black/40 shadow-inner">
+                  <CardHeader className="py-2.5 px-4 border-b border-white/10 bg-indigo-950/30">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs sm:text-sm font-black text-indigo-300">
+                        مع التبسيط
+                      </span>
+                      <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-bold">
+                        Simplified Root
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="text-right">
+                      <span className="text-xs text-slate-400 block">مسار الاختزال:</span>
+                      <span className="text-[11px] text-indigo-300 font-mono font-bold dir-ltr">
+                        {result.phase2.directSumReductionSteps.join(' ➔ ')}
+                      </span>
+                    </div>
+                    <div className="w-12 h-12 rounded-full bg-indigo-500/20 border-2 border-indigo-500/60 text-indigo-300 font-black text-2xl flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+                      {result.phase2.directSumSimplifiedAnswer}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* ── الجواب الرابع ── */}
+            <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-emerald-950/30 via-slate-900/80 to-slate-900/90 border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.15)] relative overflow-hidden">
+              <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500" />
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-emerald-500/20">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-emerald-400" />
+                  <h3 className="text-sm sm:text-base font-black text-emerald-300">
+                    ⭐ الجواب الرابع: الجذر التربيعي لـ (المجموع ÷ عدد الخانات) (أول 10 أرقام بعد الفاصلة)
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
+                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-3 py-0.5 rounded-full font-bold dir-ltr">
+                    √({result.phase2.selectedAverage.num.toString()}/{result.phase2.selectedAverage.den.toString()})
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-black/60 rounded-xl border border-white/5 space-y-2 text-xs font-mono">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300">
+                  <span className="font-sans font-bold text-slate-400">1. صيغة جمع الخانات المحددة:</span>
+                  <span className="dir-ltr text-emerald-300 font-bold">
+                    ({result.phase2.selectedSum.num.toString()}/{result.phase2.selectedSum.den.toString()}) ÷{' '}
+                    {result.phase2.selectedCount} ={' '}
+                    <span className="text-emerald-400 font-black">
+                      {result.phase2.selectedAverage.num.toString()}/{result.phase2.selectedAverage.den.toString()}
+                    </span>
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300 pt-1 border-t border-white/5">
+                  <span className="font-sans font-bold text-slate-400">2. الجذر التربيعي للكسر:</span>
+                  <span className="dir-ltr text-cyan-300 font-bold">
+                    √({result.phase2.selectedAverage.num.toString()}/{result.phase2.selectedAverage.den.toString()})
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 pt-1 border-t border-white/5">
+                  <span className="font-sans font-bold text-slate-400 block">
+                    3. الناتج العشري المستخرج (10 أرقام بعد الفاصلة):
+                  </span>
+                  {renderDottedDigits(
+                    result.phase2.sqrtResult.intPart,
+                    result.phase2.sqrtResult.first10AfterDot
+                  )}
+                  <div className="text-center text-[10px] text-emerald-300 font-sans pt-0.5">
+                    {result.phase2.sqrtResult.first10AfterDot.split('').join(' + ')} ={' '}
+                    <strong className="text-emerald-200 text-xs font-mono">
+                      {result.phase2.unsimplifiedAnswer}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* الخانتان للجواب الرابع */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                 <Card className="glass overflow-hidden border-emerald-500/30 bg-black/40 shadow-inner">
                   <CardHeader className="py-2.5 px-4 border-b border-white/10 bg-emerald-950/30">
                     <div className="flex items-center justify-between">
@@ -240,12 +337,11 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                   <CardContent className="p-4 flex items-center justify-between">
                     <span className="text-xs text-slate-400">مجموع الأرقام العشرية الـ 10:</span>
                     <div className="text-4xl font-black text-emerald-400 font-mono drop-shadow-[0_0_12px_rgba(16,185,129,0.5)]">
-                      {result.phase2.directSumUnsimplifiedAnswer}
+                      {result.phase2.unsimplifiedAnswer}
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* خانة: مع التبسيط */}
                 <Card className="glass overflow-hidden border-teal-500/30 bg-black/40 shadow-inner">
                   <CardHeader className="py-2.5 px-4 border-b border-white/10 bg-teal-950/30">
                     <div className="flex items-center justify-between">
@@ -261,115 +357,10 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                     <div className="text-right">
                       <span className="text-xs text-slate-400 block">مسار الاختزال:</span>
                       <span className="text-[11px] text-teal-300 font-mono font-bold dir-ltr">
-                        {result.phase2.directSumReductionSteps.join(' ➔ ')}
-                      </span>
-                    </div>
-                    <div className="text-4xl font-black text-teal-400 font-mono drop-shadow-[0_0_12px_rgba(45,212,191,0.5)]">
-                      {result.phase2.directSumSimplifiedAnswer}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-
-            {/* ── الجواب الرابع ── */}
-            <div className="space-y-3 p-4 rounded-2xl bg-gradient-to-b from-amber-950/20 via-slate-900/70 to-slate-900/90 border border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.12)] relative overflow-hidden">
-              <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-amber-500 via-orange-400 to-yellow-500" />
-
-              {/* عنوان الجواب الرابع */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-amber-500/20">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-amber-400" />
-                  <h3 className="text-sm sm:text-base font-black text-amber-300">
-                    🥈 الجواب الرابع: الجذر التربيعي لـ (المجموع ÷ عدد الخانات) (أول 10 أرقام من كامل العدد)
-                  </h3>
-                </div>
-                <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
-                  <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-0.5 rounded-full font-bold dir-ltr">
-                    √({result.phase2.selectedAverage.num.toString()}/{result.phase2.selectedAverage.den.toString()})
-                  </span>
-                </div>
-              </div>
-
-              {/* التفاصيل الحسابية */}
-              <div className="p-3 bg-black/60 rounded-xl border border-white/5 space-y-2 text-xs font-mono">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300">
-                  <span className="font-sans font-bold text-slate-400">1. صيغة جمع الخانات المحددة:</span>
-                  <span className="dir-ltr text-amber-300 font-bold">
-                    ({result.phase2.selectedSum.num.toString()}/{result.phase2.selectedSum.den.toString()}) ÷{' '}
-                    {result.phase2.selectedCount} ={' '}
-                    <span className="text-amber-400 font-black">
-                      {result.phase2.selectedAverage.num.toString()}/{result.phase2.selectedAverage.den.toString()}
-                    </span>
-                  </span>
-                </div>
-
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300 pt-1 border-t border-white/5">
-                  <span className="font-sans font-bold text-slate-400">2. الجذر التربيعي للكسر:</span>
-                  <span className="dir-ltr text-cyan-300 font-bold">
-                    √({result.phase2.selectedAverage.num.toString()}/{result.phase2.selectedAverage.den.toString()})
-                  </span>
-                </div>
-
-                <div className="space-y-1.5 pt-1 border-t border-white/5">
-                  <span className="font-sans font-bold text-slate-400 block">
-                    3. الناتج العشري المستخرج (10 أرقام):
-                  </span>
-                  {renderDottedDigits(
-                    result.phase2.sqrtResult.intPart,
-                    result.phase2.sqrtResult.first10AfterDot
-                  )}
-                  <div className="text-center text-[10px] text-amber-400 font-sans pt-0.5">
-                    {result.phase2.sqrtResult.first10AfterDot.split('').join(' + ')} ={' '}
-                    <strong className="text-amber-300 text-xs font-mono">
-                      {result.phase2.unsimplifiedAnswer}
-                    </strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* الخانتان للجواب الرابع */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                {/* خانة: من غير تبسيط */}
-                <Card className="glass overflow-hidden border-amber-500/30 bg-black/40 shadow-inner">
-                  <CardHeader className="py-2.5 px-4 border-b border-white/10 bg-amber-950/30">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-black text-amber-300">
-                        من غير تبسيط
-                      </span>
-                      <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">
-                        Unsimplified
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <span className="text-xs text-slate-400">مجموع الأرقام العشرية الـ 10:</span>
-                    <div className="text-4xl font-black text-amber-400 font-mono drop-shadow-[0_0_12px_rgba(245,158,11,0.5)]">
-                      {result.phase2.unsimplifiedAnswer}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* خانة: مع التبسيط */}
-                <Card className="glass overflow-hidden border-yellow-500/30 bg-black/40 shadow-inner">
-                  <CardHeader className="py-2.5 px-4 border-b border-white/10 bg-yellow-950/30">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-black text-yellow-300">
-                        مع التبسيط
-                      </span>
-                      <span className="text-[10px] bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 px-2 py-0.5 rounded-full font-bold">
-                        Single Digit
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="text-right">
-                      <span className="text-xs text-slate-400 block">مسار الاختزال:</span>
-                      <span className="text-[11px] text-yellow-300 font-mono font-bold dir-ltr">
                         {result.phase2.reductionSteps.join(' ➔ ')}
                       </span>
                     </div>
-                    <div className="text-4xl font-black text-yellow-400 font-mono drop-shadow-[0_0_12px_rgba(234,179,8,0.5)]">
+                    <div className="w-12 h-12 rounded-full bg-teal-500/20 border-2 border-teal-500/60 text-teal-300 font-black text-2xl flex items-center justify-center shadow-[0_0_15px_rgba(20,184,166,0.4)]">
                       {result.phase2.simplifiedAnswer}
                     </div>
                   </CardContent>
@@ -384,7 +375,6 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
           <Card className="glass border-white/10 shadow-2xl overflow-hidden">
             <CardHeader className="p-4 border-b border-white/10 bg-slate-900/60">
               <div className="flex flex-col gap-3">
-                {/* Title & Subtitle */}
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <h2 className="text-base sm:text-lg font-black text-slate-100 flex items-center gap-2">
@@ -397,9 +387,7 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                   </div>
                 </div>
 
-                {/* Controls Bar */}
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5">
-                  {/* Left: Rules details button & View mode toggle */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <button
                       type="button"
@@ -415,7 +403,6 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                       )}
                     </button>
 
-                    {/* View Mode Toggle: جدول / بطاقات */}
                     <div className="flex items-center p-0.5 bg-black/50 rounded-xl border border-white/10">
                       <button
                         type="button"
@@ -444,7 +431,6 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                     </div>
                   </div>
 
-                  {/* Right: Quick Selection Buttons */}
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <button
                       type="button"
@@ -473,7 +459,6 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                   </div>
                 </div>
 
-                {/* Collapsible Rules Details Dropdown */}
                 {showRulesDetails && (
                   <div className="p-3 bg-purple-950/20 border border-purple-500/20 rounded-xl space-y-2 text-xs animate-in fade-in duration-200">
                     <div className="font-bold text-purple-300 flex items-center gap-1.5">
@@ -500,7 +485,6 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
             </CardHeader>
 
             <CardContent className="p-4 space-y-4">
-              {/* TABLE VIEW (Active by default) */}
               {slotsDisplayMode === 'table' ? (
                 <div className="overflow-x-auto rounded-xl border border-white/10 bg-black/50 shadow-inner">
                   <table className="w-full text-xs text-right border-collapse min-w-[700px]">
@@ -530,14 +514,12 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                                 : 'opacity-40 hover:opacity-70 bg-transparent'
                             }`}
                           >
-                            {/* الخانة */}
                             <td className="p-2.5 text-center">
                               <span className="inline-block px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-slate-300 font-bold">
                                 #{s.pos}
                               </span>
                             </td>
 
-                            {/* الحرف */}
                             <td className="p-2.5 text-center font-sans font-black">
                               <div className="inline-flex items-center gap-1">
                                 <span className="w-7 h-7 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-sm text-purple-200">
@@ -551,46 +533,34 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                               </div>
                             </td>
 
-                            {/* خطوة 1 */}
                             <td className="p-2.5 text-center text-purple-300 font-bold">
                               {s.step1Val}
                             </td>
 
-                            {/* خطوة 2 */}
                             <td className="p-2.5 text-center text-slate-300">
                               <div className="dir-ltr font-bold">
                                 {s.step2Frac.num.toString()}/{s.step2Frac.den.toString()}
                               </div>
-                              <span className="text-[9px] text-slate-500 font-sans block">
-                                {s.step2Formula}
-                              </span>
                             </td>
 
-                            {/* خطوة 3 */}
                             <td className="p-2.5 text-center text-slate-300">
                               <div className="dir-ltr font-bold">
                                 {s.step3Frac.num.toString()}/{s.step3Frac.den.toString()}
                               </div>
                             </td>
 
-                            {/* خطوة 4 */}
                             <td className="p-2.5 text-center text-amber-300 font-bold">
                               <div className="dir-ltr">
                                 {s.step4GroupFrac.num.toString()}/{s.step4GroupFrac.den.toString()}
                               </div>
-                              <span className="text-[9px] text-amber-400/60 font-sans block">
-                                حرف {s.char}
-                              </span>
                             </td>
 
-                            {/* خطوة 5 */}
                             <td className="p-2.5 text-center text-slate-300">
                               <div className="dir-ltr">
                                 {s.step5Frac.num.toString()}/{s.step5Frac.den.toString()}
                               </div>
                             </td>
 
-                            {/* خطوة 6 */}
                             <td className="p-2.5 text-center text-cyan-300 font-bold">
                               <span className="dir-ltr">
                                 {s.step6RatioFrac.den === 1n
@@ -599,7 +569,6 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                               </span>
                             </td>
 
-                            {/* الناتج النهائي */}
                             <td className="p-2.5 text-center">
                               <span className="text-emerald-400 font-black text-sm dir-ltr inline-block px-2 py-0.5 rounded-lg bg-emerald-950/40 border border-emerald-500/30">
                                 {s.finalValueFrac.num.toString()}/{s.finalValueFrac.den.toString()}
@@ -612,7 +581,6 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                   </table>
                 </div>
               ) : (
-                /* CARDS VIEW */
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {result.phase2.slots.map((slot, idx) => {
                     const isSelected = slot.isSelected;
@@ -637,19 +605,11 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                             <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center font-bold text-lg text-purple-200">
                               {slot.char}
                             </div>
-                            {slot.originalChar && slot.originalChar !== slot.char && (
-                              <span className="text-[10px] text-slate-500">
-                                ({slot.originalChar})
-                              </span>
-                            )}
                           </div>
                           <div className="text-left font-mono">
                             <div className="text-xl sm:text-2xl font-black text-amber-300 dir-ltr">
                               {slot.finalValueFrac.num.toString()}/{slot.finalValueFrac.den.toString()}
                             </div>
-                            <span className="text-[9px] text-slate-400 dir-rtl block">
-                              = {slot.char}
-                            </span>
                           </div>
                         </div>
                       </div>
@@ -657,19 +617,19 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                   })}
                 </div>
               )}
+            </CardContent>
+          </Card>
 
-              {/* ============================================================ */}
-              {/* ثالثاً: بوكس وقسم الانتقال (محاذاة اليمين RTL)              */}
-              {/* ============================================================ */}
+          {/* ============================================================ */}
+          {/* ثالثاً: بوكس وقسم الانتقال (محاذاة اليمين justify-start RTL) */}
+          {/* ============================================================ */}
+          <Card className="glass border-emerald-500/30 bg-gradient-to-b from-slate-900/90 to-emerald-950/20 shadow-xl overflow-hidden">
+            <CardContent className="p-4 space-y-4">
               <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/30 via-slate-900/60 to-purple-950/30 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-start gap-4 shadow-lg">
-                {/* زر الانتقال على اليمين (RTL flex-start) */}
-                <div className="flex items-center gap-2 font-mono self-start sm:self-auto">
-                  <div className="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 font-black text-sm dir-ltr shadow-inner">
-                    S = {result.phase2.selectedSum.num.toString()}/{result.phase2.selectedSum.den.toString()}
-                  </div>
+                <div className="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 font-black text-sm dir-ltr shrink-0 shadow-inner">
+                  S = {result.phase2.selectedSum.num.toString()}/{result.phase2.selectedSum.den.toString()}
                 </div>
 
-                {/* تفاصيل ملخص الخانات */}
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shrink-0">
                     <CheckSquare className="w-5 h-5" />
@@ -735,4 +695,3 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
     </div>
   );
 }
-
