@@ -31,14 +31,9 @@ export function executePhase1(chars: string[]): Phase1Summary {
     throw new Error('قائمة الحروف فارغة');
   }
 
-  // الخطوة 1: عدد طبيعي (1, 2, ..., n) لكل خانة ثم الجمع
-  const step1Vals: number[] = [];
-  let sum1BigInt = 0n;
-  for (let i = 1; i <= n; i++) {
-    step1Vals.push(i);
-    sum1BigInt += BigInt(i);
-  }
-  const sum1 = new Fraction(sum1BigInt, ONE);
+  // الخطوة 1: وضع قيمة (1) على كل خانة ثم الجمع (1 1 1 = 3)
+  const step1Vals: number[] = Array(n).fill(1);
+  const sum1 = new Fraction(BigInt(n), ONE);
   const step1Val = 1;
 
   // الخطوة 2: عدد طبيعي (i ÷ n) × i = i^2 / n
@@ -208,13 +203,20 @@ export function executePhase2(
     });
   }
 
-  // 1. الطريقة الأولى: مع التقسيم على عدد الخانات المحددة (المتوسط)
   const divisor = selectedCount > 0 ? selectedCount : 1;
   const selectedAverage = selectedSum.div(new Fraction(BigInt(divisor), ONE));
+
+  // 1. الجواب الأول: مع الجذر التربيعي لـ (المجموع ÷ عدد الخانات)
   const sqrtResult = selectedAverage.sqrtDecimal(60);
 
-  // 2. الطريقة الثانية: بدون تقسيم على عدد الخانات (على مجموع الخانات المحددة مباشرة)
+  // 2. الجواب الثاني: مع الجذر التربيعي لمجموع الخانات مباشرة
   const directSumSqrtResult = selectedSum.sqrtDecimal(60);
+
+  // 3. الجواب الثالث: بدون جذر تربيعي لمجموع الخانات المحددة
+  const directDecimalResult = selectedSum.toDecimal(60);
+
+  // 4. الجواب الرابع: بدون جذر تربيعي لـ (المجموع ÷ عدد الخانات)
+  const averageDecimalResult = selectedAverage.toDecimal(60);
 
   return {
     step1Val,
@@ -224,16 +226,30 @@ export function executePhase2(
     selectedCount,
     selectedSum,
     selectedAverage,
-    // الطريقة الأولى (مع التقسيم)
+
+    // الجواب الأول
     sqrtResult,
     unsimplifiedAnswer: sqrtResult.unsimplifiedSum,
     simplifiedAnswer: sqrtResult.simplifiedSingleDigit,
     reductionSteps: sqrtResult.reductionSteps,
-    // الطريقة الثانية (بدون تقسيم - مباشرة على مجموع الخانات)
+
+    // الجواب الثاني
     directSumSqrtResult,
     directSumUnsimplifiedAnswer: directSumSqrtResult.unsimplifiedSum,
     directSumSimplifiedAnswer: directSumSqrtResult.simplifiedSingleDigit,
     directSumReductionSteps: directSumSqrtResult.reductionSteps,
+
+    // الجواب الثالث (بدون جذر)
+    directDecimalResult,
+    directDecimalUnsimplifiedAnswer: directDecimalResult.unsimplifiedSum,
+    directDecimalSimplifiedAnswer: directDecimalResult.simplifiedSingleDigit,
+    directDecimalReductionSteps: directDecimalResult.reductionSteps,
+
+    // الجواب الرابع (بدون جذر)
+    averageDecimalResult,
+    averageDecimalUnsimplifiedAnswer: averageDecimalResult.unsimplifiedSum,
+    averageDecimalSimplifiedAnswer: averageDecimalResult.simplifiedSingleDigit,
+    averageDecimalReductionSteps: averageDecimalResult.reductionSteps,
   };
 }
 
@@ -256,8 +272,8 @@ export function calculateArabicDualPhase(
   // 1. تشغيل القسم الأول للحصول على البذرة (Seed)
   const phase1 = executePhase1(normalizedChars);
 
-  // إذا تم تمرير customSeed أو كانت الكلمة "مدد" فيتم استخدام 42 لمطابقة الورقة والتصميم تماماً
-  const seedToUse = customSeed !== undefined ? customSeed : (text.trim() === 'مدد' ? 42 : phase1.seed);
+  // استخدام البذرة المحسوبة تلقائياً من القسم الأول (أو customSeed في حال تمريره)
+  const seedToUse = customSeed !== undefined ? customSeed : phase1.seed;
 
   // 2. تشغيل القسم الثاني باستخدام البذرة والتحكم بأزرار الانتقال
   const phase2 = executePhase2(normalizedChars, rawChars, seedToUse, selectedIndices);
@@ -279,4 +295,5 @@ export function calculateArabicDualPhase(
 
 // Backwards compatibility
 export const calculateArabicPower = calculateArabicDualPhase;
+
 

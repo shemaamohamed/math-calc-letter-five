@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import ArabicInput from '@/components/calculator/ArabicInput';
 import ResultView from '@/components/calculator/ResultView';
@@ -8,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useWordCalculator } from '@/hooks/useWordCalculator';
 import { useRouter } from 'next/navigation';
-import { Sparkles, LogOut, Calculator } from 'lucide-react';
+import { Sparkles, LogOut, Calculator, Loader2 } from 'lucide-react';
 
 function HomePage() {
   const {
@@ -22,13 +21,8 @@ function HomePage() {
     selectAll,
     deselectAll,
     invertSelection,
-  } = useWordCalculator('مدد');
+  } = useWordCalculator('');
   const router = useRouter();
-
-  // Run calculation for "مدد" on initial load to match the preview photos immediately
-  useEffect(() => {
-    calculate('مدد');
-  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
@@ -98,7 +92,7 @@ function HomePage() {
                 >
                   {isCalculating ? (
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
                       <span>جاري الحساب...</span>
                     </div>
                   ) : (

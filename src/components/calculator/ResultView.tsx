@@ -111,64 +111,7 @@ export default function ResultView({
     };
   }, [result]);
 
-  // Compute 2 remaining final answers (Answer 3 & Answer 4)
-  const gates = useMemo(() => {
-    if (!result) return null;
-
-    const { phase2 } = result;
-    const { selectedSum, selectedAverage } = phase2;
-
-    const computeGateDigits = (
-      fracNum: bigint,
-      fracDen: bigint
-    ) => {
-      const f = new Fraction(fracNum, fracDen);
-      const sqrtRes = f.sqrtDecimal(60);
-      const intPart = sqrtRes.intPart;
-      const fracPart = sqrtRes.fracPart;
-
-      // Extract 10 digits starting immediately after the decimal point
-      const digits10 = fracPart.substring(0, 10);
-      const displayNumber = `${intPart}.${digits10}`;
-
-      // Sum digits (Unsimplified)
-      const digitsList = digits10.split('').map(d => parseInt(d, 10)).filter(d => !isNaN(d));
-      const unsimplifiedSum = digitsList.reduce((acc, val) => acc + val, 0);
-
-      // Reduction steps
-      const steps: number[] = [unsimplifiedSum];
-      let curr = unsimplifiedSum;
-      while (curr >= 10) {
-        curr = curr
-          .toString()
-          .split('')
-          .map(d => parseInt(d, 10))
-          .reduce((acc, val) => acc + val, 0);
-        steps.push(curr);
-      }
-      const singleDigit = steps[steps.length - 1];
-
-      return {
-        displayNumber,
-        digits10,
-        unsimplifiedSum,
-        steps,
-        singleDigit,
-        intPart,
-        fracPart,
-      };
-    };
-
-    // Gate 3: الجواب الثالث (√S - أول 10 أرقام بعد الفاصلة)
-    const g3 = computeGateDigits(selectedSum.num, selectedSum.den);
-
-    // Gate 4: الجواب الرابع (√(S/N) - أول 10 أرقام بعد الفاصلة)
-    const g4 = computeGateDigits(selectedAverage.num, selectedAverage.den);
-
-    return { g3, g4 };
-  }, [result]);
-
-  if (!result || !gates) {
+  if (!result) {
     return null;
   }
 
@@ -178,7 +121,7 @@ export default function ResultView({
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-500 dir-rtl font-cairo w-full min-w-0">
       {/* ============================================================ */}
-      {/* أولاً (أعلى الصفحة): قسم الأجوبة النهائية الأربعة (الجواب الثالث والجواب الرابع) */}
+      {/* أولاً (أعلى الصفحة): قسم الأجوبة النهائية الأربعة          */}
       {/* ============================================================ */}
       <div className="space-y-4">
         {/* Section Header */}
@@ -186,7 +129,7 @@ export default function ResultView({
           <div className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-amber-400" />
             <h2 className="text-base sm:text-lg font-black text-slate-100">
-              قسم النتائج النهائي (4 أجوبة فقط)
+              قسم النتائج النهائي (جدول الأجوبة الأربعة 4 Final Answers)
             </h2>
           </div>
           <div className="px-3 py-1 rounded-full bg-purple-950/60 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
@@ -194,7 +137,7 @@ export default function ResultView({
           </div>
         </div>
 
-        {/* ── الجواب الثالث ── */}
+        {/* ── الجواب الأول ── */}
         <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-purple-950/30 via-slate-900/80 to-slate-900/90 border border-purple-500/40 shadow-[0_0_30px_rgba(168,85,247,0.15)] relative overflow-hidden">
           <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-purple-500 via-indigo-400 to-cyan-500" />
 
@@ -203,12 +146,12 @@ export default function ResultView({
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-purple-400 animate-ping" />
               <h3 className="text-sm sm:text-base font-black text-purple-300">
-                🏆 الجواب الثالث: الجذر التربيعي لمجموع الخانات (أول 10 أرقام بعد الفاصلة)
+                🏆 الجواب الأول: الجذر التربيعي لـ (المجموع ÷ عدد الخانات) (أول 10 أرقام بعد الفاصلة)
               </h3>
             </div>
             <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
               <span className="bg-purple-500/20 text-purple-300 border border-purple-500/40 px-3 py-0.5 rounded-full font-bold dir-ltr">
-                √({result.phase2.selectedSum.num.toString()}/{result.phase2.selectedSum.den.toString()})
+                √({phase2.selectedAverage.num.toString()}/{phase2.selectedAverage.den.toString()})
               </span>
             </div>
           </div>
@@ -216,11 +159,11 @@ export default function ResultView({
           {/* Calculations Breakdown */}
           <div className="p-3 bg-black/60 rounded-xl border border-white/5 space-y-2 text-xs font-mono">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300">
-              <span className="font-sans font-bold text-slate-400">1. صيغة جمع الخانات المحددة:</span>
+              <span className="font-sans font-bold text-slate-400">1. صيغة المتوسط الكسري:</span>
               <span className="dir-ltr text-amber-300 font-bold overflow-x-auto whitespace-nowrap">
-                S = {selectedSlotsFormula} ={' '}
+                ({phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()}) ÷ {selectedCount} ={' '}
                 <span className="text-purple-400 font-black">
-                  {result.phase2.selectedSum.num.toString()}/{result.phase2.selectedSum.den.toString()}
+                  {phase2.selectedAverage.num.toString()}/{phase2.selectedAverage.den.toString()}
                 </span>
               </span>
             </div>
@@ -228,7 +171,7 @@ export default function ResultView({
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300 pt-1 border-t border-white/5">
               <span className="font-sans font-bold text-slate-400">2. الجذر التربيعي للكسر:</span>
               <span className="dir-ltr text-cyan-300 font-bold">
-                √({result.phase2.selectedSum.num.toString()}/{result.phase2.selectedSum.den.toString()})
+                √({phase2.selectedAverage.num.toString()}/{phase2.selectedAverage.den.toString()})
               </span>
             </div>
 
@@ -237,19 +180,19 @@ export default function ResultView({
                 3. الناتج العشري المستخرج (10 أرقام بعد الفاصلة):
               </span>
               {renderDottedDigits(
-                gates.g3.intPart,
-                gates.g3.digits10
+                phase2.sqrtResult.intPart,
+                phase2.sqrtResult.first10AfterDot
               )}
               <div className="text-center text-[10px] text-purple-300 font-sans pt-0.5">
-                {gates.g3.digits10.split('').join(' + ')} ={' '}
+                {phase2.sqrtResult.first10AfterDot.split('').join(' + ')} ={' '}
                 <strong className="text-purple-200 text-xs font-mono">
-                  {gates.g3.unsimplifiedSum}
+                  {phase2.unsimplifiedAnswer}
                 </strong>
               </div>
             </div>
           </div>
 
-          {/* الخانتان للجواب الثالث */}
+          {/* الخانتان للجواب الأول */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
             {/* خانة: من غير تبسيط */}
             <Card className="glass overflow-hidden border-purple-500/30 bg-black/40 shadow-inner">
@@ -266,7 +209,7 @@ export default function ResultView({
               <CardContent className="p-4 flex items-center justify-between">
                 <span className="text-xs text-slate-400">مجموع الأرقام العشرية الـ 10:</span>
                 <div className="text-4xl font-black text-purple-400 font-mono drop-shadow-[0_0_12px_rgba(168,85,247,0.5)]">
-                  {gates.g3.unsimplifiedSum}
+                  {phase2.unsimplifiedAnswer}
                 </div>
               </CardContent>
             </Card>
@@ -287,32 +230,32 @@ export default function ResultView({
                 <div className="text-right">
                   <span className="text-xs text-slate-400 block">مسار الاختزال:</span>
                   <span className="text-[11px] text-indigo-300 font-mono font-bold dir-ltr">
-                    {gates.g3.steps.join(' ➔ ')}
+                    {phase2.reductionSteps.join(' ➔ ')}
                   </span>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-indigo-500/20 border-2 border-indigo-500/60 text-indigo-300 font-black text-2xl flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.4)]">
-                  {gates.g3.singleDigit}
+                  {phase2.simplifiedAnswer}
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* ── الجواب الرابع ── */}
-        <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-emerald-950/30 via-slate-900/80 to-slate-900/90 border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.15)] relative overflow-hidden">
-          <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500" />
+        {/* ── الجواب الثاني ── */}
+        <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-blue-950/30 via-slate-900/80 to-slate-900/90 border border-blue-500/40 shadow-[0_0_30px_rgba(59,130,246,0.15)] relative overflow-hidden">
+          <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-teal-500" />
 
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-emerald-500/20">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-blue-500/20">
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-emerald-400" />
-              <h3 className="text-sm sm:text-base font-black text-emerald-300">
-                ⭐ الجواب الرابع: الجذر التربيعي لـ (المجموع ÷ عدد الخانات) (أول 10 أرقام بعد الفاصلة)
+              <span className="w-3 h-3 rounded-full bg-blue-400" />
+              <h3 className="text-sm sm:text-base font-black text-blue-300">
+                ⭐ الجواب الثاني: الجذر التربيعي لمجموع الخانات المحددة مباشرة (أول 10 أرقام بعد الفاصلة)
               </h3>
             </div>
             <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
-              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-3 py-0.5 rounded-full font-bold dir-ltr">
-                √({result.phase2.selectedAverage.num.toString()}/{result.phase2.selectedAverage.den.toString()})
+              <span className="bg-blue-500/20 text-blue-300 border border-blue-500/40 px-3 py-0.5 rounded-full font-bold dir-ltr">
+                √({phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()})
               </span>
             </div>
           </div>
@@ -320,12 +263,11 @@ export default function ResultView({
           {/* Calculations Breakdown */}
           <div className="p-3 bg-black/60 rounded-xl border border-white/5 space-y-2 text-xs font-mono">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300">
-              <span className="font-sans font-bold text-slate-400">1. صيغة جمع الخانات المحددة:</span>
-              <span className="dir-ltr text-emerald-300 font-bold overflow-x-auto whitespace-nowrap">
-                ({result.phase2.selectedSum.num.toString()}/{result.phase2.selectedSum.den.toString()}) ÷{' '}
-                {selectedCount} ={' '}
-                <span className="text-emerald-400 font-black">
-                  {result.phase2.selectedAverage.num.toString()}/{result.phase2.selectedAverage.den.toString()}
+              <span className="font-sans font-bold text-slate-400">1. صيغة مجموع الخانات المحددة:</span>
+              <span className="dir-ltr text-blue-300 font-bold overflow-x-auto whitespace-nowrap">
+                S = {selectedSlotsFormula} ={' '}
+                <span className="text-blue-400 font-black">
+                  {phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()}
                 </span>
               </span>
             </div>
@@ -333,7 +275,7 @@ export default function ResultView({
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300 pt-1 border-t border-white/5">
               <span className="font-sans font-bold text-slate-400">2. الجذر التربيعي للكسر:</span>
               <span className="dir-ltr text-cyan-300 font-bold">
-                √({result.phase2.selectedAverage.num.toString()}/{result.phase2.selectedAverage.den.toString()})
+                √({phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()})
               </span>
             </div>
 
@@ -342,13 +284,221 @@ export default function ResultView({
                 3. الناتج العشري المستخرج (10 أرقام بعد الفاصلة):
               </span>
               {renderDottedDigits(
-                gates.g4.intPart,
-                gates.g4.digits10
+                phase2.directSumSqrtResult.intPart,
+                phase2.directSumSqrtResult.first10AfterDot
+              )}
+              <div className="text-center text-[10px] text-blue-300 font-sans pt-0.5">
+                {phase2.directSumSqrtResult.first10AfterDot.split('').join(' + ')} ={' '}
+                <strong className="text-blue-200 text-xs font-mono">
+                  {phase2.directSumUnsimplifiedAnswer}
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          {/* الخانتان للجواب الثاني */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            {/* خانة: من غير تبسيط */}
+            <Card className="glass overflow-hidden border-blue-500/30 bg-black/40 shadow-inner">
+              <CardHeader className="py-2.5 px-4 border-b border-white/10 bg-blue-950/30">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs sm:text-sm font-black text-blue-300">
+                    من غير تبسيط
+                  </span>
+                  <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-bold">
+                    Unsimplified
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 flex items-center justify-between">
+                <span className="text-xs text-slate-400">مجموع الأرقام العشرية الـ 10:</span>
+                <div className="text-4xl font-black text-blue-400 font-mono drop-shadow-[0_0_12px_rgba(59,130,246,0.5)]">
+                  {phase2.directSumUnsimplifiedAnswer}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* خانة: مع التبسيط */}
+            <Card className="glass overflow-hidden border-cyan-500/30 bg-black/40 shadow-inner">
+              <CardHeader className="py-2.5 px-4 border-b border-white/10 bg-cyan-950/30">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs sm:text-sm font-black text-cyan-300">
+                    مع التبسيط
+                  </span>
+                  <span className="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-full font-bold">
+                    Simplified Root
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="text-right">
+                  <span className="text-xs text-slate-400 block">مسار الاختزال:</span>
+                  <span className="text-[11px] text-cyan-300 font-mono font-bold dir-ltr">
+                    {phase2.directSumReductionSteps.join(' ➔ ')}
+                  </span>
+                </div>
+                <div className="w-12 h-12 rounded-full bg-cyan-500/20 border-2 border-cyan-500/60 text-cyan-300 font-black text-2xl flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+                  {phase2.directSumSimplifiedAnswer}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* ── الجواب الثالث (إضافة جديدة - بدون جذر تربيعي) ── */}
+        <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-amber-950/30 via-slate-900/80 to-slate-900/90 border border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.15)] relative overflow-hidden">
+          <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-amber-500 via-orange-400 to-yellow-500" />
+
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-amber-500/20">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-amber-400" />
+              <h3 className="text-sm sm:text-base font-black text-amber-300">
+                💎 الجواب الثالث: مجموع الخانات المحددة (بدون جذر تربيعي - No Square Root)
+              </h3>
+            </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
+              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-0.5 rounded-full font-bold dir-ltr">
+                {phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()}
+              </span>
+            </div>
+          </div>
+
+          {/* Calculations Breakdown */}
+          <div className="p-3 bg-black/60 rounded-xl border border-white/5 space-y-2 text-xs font-mono">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300">
+              <span className="font-sans font-bold text-slate-400">1. صيغة مجموع الخانات المحددة (SSS):</span>
+              <span className="dir-ltr text-amber-300 font-bold overflow-x-auto whitespace-nowrap">
+                S = {selectedSlotsFormula} ={' '}
+                <span className="text-amber-400 font-black">
+                  {phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()}
+                </span>
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300 pt-1 border-t border-white/5">
+              <span className="font-sans font-bold text-slate-400">2. التحويل العشري المباشر (Decimal Form - بدون جذر):</span>
+              <span className="dir-ltr text-yellow-300 font-bold">
+                {phase2.directDecimalResult.fullString.substring(0, 25)}...
+              </span>
+            </div>
+
+            <div className="space-y-1.5 pt-1 border-t border-white/5">
+              <span className="font-sans font-bold text-slate-400 block">
+                3. الناتج العشري المستخرج (أول 10 أرقام بعد الفاصلة):
+              </span>
+              {renderDottedDigits(
+                phase2.directDecimalResult.intPart,
+                phase2.directDecimalResult.first10AfterDot
+              )}
+              <div className="text-center text-[10px] text-amber-300 font-sans pt-0.5">
+                {phase2.directDecimalResult.first10AfterDot.split('').join(' + ')} ={' '}
+                <strong className="text-amber-200 text-xs font-mono">
+                  {phase2.directDecimalUnsimplifiedAnswer}
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          {/* الخانتان للجواب الثالث */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            {/* خانة: من غير تبسيط */}
+            <Card className="glass overflow-hidden border-amber-500/30 bg-black/40 shadow-inner">
+              <CardHeader className="py-2.5 px-4 border-b border-white/10 bg-amber-950/30">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs sm:text-sm font-black text-amber-300">
+                    من غير تبسيط
+                  </span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">
+                    Unsimplified (No Sqrt)
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 flex items-center justify-between">
+                <span className="text-xs text-slate-400">مجموع الأرقام العشرية الـ 10:</span>
+                <div className="text-4xl font-black text-amber-400 font-mono drop-shadow-[0_0_12px_rgba(245,158,11,0.5)]">
+                  {phase2.directDecimalUnsimplifiedAnswer}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* خانة: مع التبسيط */}
+            <Card className="glass overflow-hidden border-orange-500/30 bg-black/40 shadow-inner">
+              <CardHeader className="py-2.5 px-4 border-b border-white/10 bg-orange-950/30">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs sm:text-sm font-black text-orange-300">
+                    مع التبسيط
+                  </span>
+                  <span className="text-[10px] bg-orange-500/20 text-orange-300 border border-orange-500/30 px-2 py-0.5 rounded-full font-bold">
+                    Simplified (No Sqrt)
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="text-right">
+                  <span className="text-xs text-slate-400 block">مسار الاختزال:</span>
+                  <span className="text-[11px] text-orange-300 font-mono font-bold dir-ltr">
+                    {phase2.directDecimalReductionSteps.join(' ➔ ')}
+                  </span>
+                </div>
+                <div className="w-12 h-12 rounded-full bg-orange-500/20 border-2 border-orange-500/60 text-orange-300 font-black text-2xl flex items-center justify-center shadow-[0_0_15px_rgba(249,115,22,0.4)]">
+                  {phase2.directDecimalSimplifiedAnswer}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* ── الجواب الرابع (إضافة جديدة - بدون جذر تربيعي) ── */}
+        <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-emerald-950/30 via-slate-900/80 to-slate-900/90 border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.15)] relative overflow-hidden">
+          <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500" />
+
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-emerald-500/20">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-emerald-400" />
+              <h3 className="text-sm sm:text-base font-black text-emerald-300">
+                🚀 الجواب الرابع: (المجموع ÷ عدد الخانات) (بدون جذر تربيعي - No Square Root)
+              </h3>
+            </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
+              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-3 py-0.5 rounded-full font-bold dir-ltr">
+                {phase2.selectedAverage.num.toString()}/{phase2.selectedAverage.den.toString()}
+              </span>
+            </div>
+          </div>
+
+          {/* Calculations Breakdown */}
+          <div className="p-3 bg-black/60 rounded-xl border border-white/5 space-y-2 text-xs font-mono">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300">
+              <span className="font-sans font-bold text-slate-400">1. صيغة القسمة المباشرة:</span>
+              <span className="dir-ltr text-emerald-300 font-bold overflow-x-auto whitespace-nowrap">
+                ({phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()}) ÷ {selectedCount} ={' '}
+                <span className="text-emerald-400 font-black">
+                  {phase2.selectedAverage.num.toString()}/{phase2.selectedAverage.den.toString()}
+                </span>
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300 pt-1 border-t border-white/5">
+              <span className="font-sans font-bold text-slate-400">2. التحويل العشري المباشر (Decimal Form - بدون جذر):</span>
+              <span className="dir-ltr text-teal-300 font-bold">
+                {phase2.averageDecimalResult.fullString.substring(0, 25)}...
+              </span>
+            </div>
+
+            <div className="space-y-1.5 pt-1 border-t border-white/5">
+              <span className="font-sans font-bold text-slate-400 block">
+                3. الناتج العشري المستخرج (أول 10 أرقام بعد الفاصلة):
+              </span>
+              {renderDottedDigits(
+                phase2.averageDecimalResult.intPart,
+                phase2.averageDecimalResult.first10AfterDot
               )}
               <div className="text-center text-[10px] text-emerald-300 font-sans pt-0.5">
-                {gates.g4.digits10.split('').join(' + ')} ={' '}
+                {phase2.averageDecimalResult.first10AfterDot.split('').join(' + ')} ={' '}
                 <strong className="text-emerald-200 text-xs font-mono">
-                  {gates.g4.unsimplifiedSum}
+                  {phase2.averageDecimalUnsimplifiedAnswer}
                 </strong>
               </div>
             </div>
@@ -364,14 +514,14 @@ export default function ResultView({
                     من غير تبسيط
                   </span>
                   <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
-                    Unsimplified
+                    Unsimplified (No Sqrt)
                   </span>
                 </div>
               </CardHeader>
               <CardContent className="p-4 flex items-center justify-between">
                 <span className="text-xs text-slate-400">مجموع الأرقام العشرية الـ 10:</span>
                 <div className="text-4xl font-black text-emerald-400 font-mono drop-shadow-[0_0_12px_rgba(16,185,129,0.5)]">
-                  {gates.g4.unsimplifiedSum}
+                  {phase2.averageDecimalUnsimplifiedAnswer}
                 </div>
               </CardContent>
             </Card>
@@ -384,7 +534,7 @@ export default function ResultView({
                     مع التبسيط
                   </span>
                   <span className="text-[10px] bg-teal-500/20 text-teal-300 border border-teal-500/30 px-2 py-0.5 rounded-full font-bold">
-                    Simplified Root
+                    Simplified (No Sqrt)
                   </span>
                 </div>
               </CardHeader>
@@ -392,11 +542,11 @@ export default function ResultView({
                 <div className="text-right">
                   <span className="text-xs text-slate-400 block">مسار الاختزال:</span>
                   <span className="text-[11px] text-teal-300 font-mono font-bold dir-ltr">
-                    {gates.g4.steps.join(' ➔ ')}
+                    {phase2.averageDecimalReductionSteps.join(' ➔ ')}
                   </span>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-teal-500/20 border-2 border-teal-500/60 text-teal-300 font-black text-2xl flex items-center justify-center shadow-[0_0_15px_rgba(20,184,166,0.4)]">
-                  {gates.g4.singleDigit}
+                  {phase2.averageDecimalSimplifiedAnswer}
                 </div>
               </CardContent>
             </Card>

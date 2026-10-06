@@ -60,17 +60,30 @@ export interface Phase2Summary {
   selectedCount: number;
   selectedSum: FractionType;
   selectedAverage: FractionType;
-  // 1. حساب الجذر على معدل الخانات (بالتقسيم على عدد الخانات)
+
+  // 1. الجواب الأول: الجذر التربيعي لـ (المجموع ÷ عدد الخانات)
   sqrtResult: DecimalSquareRootResult;
-  unsimplifiedAnswer: number; // الناتج النهائي مع التقسيم (من غير تبسيط)
-  simplifiedAnswer: number; // الناتج النهائي مع التقسيم (بالتبسيط)
+  unsimplifiedAnswer: number; // الناتج النهائي مع التقسيم مع الجذر (من غير تبسيط)
+  simplifiedAnswer: number; // الناتج النهائي مع التقسيم مع الجذر (بالتبسيط)
   reductionSteps: number[];
 
-  // 2. حساب الجذر على مجموع الخانات مباشرة (بدون تقسيم على عدد الخانات)
+  // 2. الجواب الثاني: الجذر التربيعي لمجموع الخانات مباشرة
   directSumSqrtResult: DecimalSquareRootResult;
-  directSumUnsimplifiedAnswer: number; // الناتج المباشر (من غير تبسيط - مثال: 60)
-  directSumSimplifiedAnswer: number; // الناتج المباشر (بالتبسيط - مثال: 6)
-  directSumReductionSteps: number[]; // مسار الاختزال المباشر (مثال: [60, 6])
+  directSumUnsimplifiedAnswer: number; // الناتج المباشر مع الجذر (من غير تبسيط)
+  directSumSimplifiedAnswer: number; // الناتج المباشر مع الجذر (بالتبسيط)
+  directSumReductionSteps: number[];
+
+  // 3. الجواب الثالث: مجموع الخانات المحددة بدون جذر تربيعي (No Square Root)
+  directDecimalResult: DecimalSquareRootResult;
+  directDecimalUnsimplifiedAnswer: number; // الناتج المباشر بدون جذر (من غير تبسيط)
+  directDecimalSimplifiedAnswer: number; // الناتج المباشر بدون جذر (بالتبسيط)
+  directDecimalReductionSteps: number[];
+
+  // 4. الجواب الرابع: (المجموع ÷ عدد الخانات) بدون جذر تربيعي (No Square Root)
+  averageDecimalResult: DecimalSquareRootResult;
+  averageDecimalUnsimplifiedAnswer: number; // الناتج مع التقسيم بدون جذر (من غير تبسيط)
+  averageDecimalSimplifiedAnswer: number; // الناتج مع التقسيم بدون جذر (بالتبسيط)
+  averageDecimalReductionSteps: number[];
 }
 
 export interface CalculationState {

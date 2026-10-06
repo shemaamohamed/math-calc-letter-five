@@ -226,4 +226,74 @@ export class Fraction implements FractionType {
   sqrtDecimal(precision = 60): DecimalSquareRootResult {
     return sqrtFractionTo10DigitSum(this, precision);
   }
+
+  /**
+   * Computes the decimal representation of the fraction directly (without square root)
+   * and extracts the first 10 digits after the decimal point (.)
+   */
+  toDecimal(precision = 60): DecimalSquareRootResult {
+    return fractionTo10DigitSum(this, precision);
+  }
 }
+
+/**
+ * High-precision decimal expansion directly from a Fraction (without square root),
+ * extracting exactly the first 10 decimal digits after the dot and calculating sums.
+ */
+export function fractionTo10DigitSum(
+  f: FractionType,
+  precision = 60
+): DecimalSquareRootResult {
+  if (f.den === ZERO) {
+    throw new Error('Division by zero in fractionTo10DigitSum');
+  }
+
+  const isNeg = (f.num < ZERO && f.den > ZERO) || (f.num > ZERO && f.den < ZERO);
+  const numAbs = f.num < ZERO ? -f.num : f.num;
+  const denAbs = f.den < ZERO ? -f.den : f.den;
+
+  const intVal = numAbs / denAbs;
+  const rem = numAbs % denAbs;
+
+  const p = BigInt(precision);
+  const scale = TEN ** p;
+  const scaledFrac = (rem * scale) / denAbs;
+
+  const fracStr = scaledFrac.toString().padStart(precision, '0');
+  const intStr = (isNeg ? '-' : '') + intVal.toString();
+  const fullString = `${intStr}.${fracStr}`;
+
+  const first10AfterDot = fracStr.substring(0, 10);
+  const digitsList = first10AfterDot
+    .split('')
+    .map(d => parseInt(d, 10))
+    .filter(d => !isNaN(d));
+
+  // Sum the 10 digits (من غير تبسيط)
+  const unsimplifiedSum = digitsList.reduce((acc, val) => acc + val, 0);
+
+  // Repeated digit reduction until single digit (بالتبسيط)
+  const reductionSteps: number[] = [unsimplifiedSum];
+  let current = unsimplifiedSum;
+  while (current >= 10) {
+    current = current
+      .toString()
+      .split('')
+      .reduce((acc, digit) => acc + parseInt(digit, 10), 0);
+    reductionSteps.push(current);
+  }
+
+  const simplifiedSingleDigit = reductionSteps[reductionSteps.length - 1] ?? 0;
+
+  return {
+    intPart: intStr,
+    fracPart: fracStr,
+    fullString,
+    first10AfterDot,
+    digitsList,
+    unsimplifiedSum,
+    reductionSteps,
+    simplifiedSingleDigit,
+  };
+}
+
