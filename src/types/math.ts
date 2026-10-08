@@ -61,22 +61,22 @@ export interface Phase2Summary {
   selectedSum: FractionType;
   selectedAverage: FractionType;
 
-  // 1. الجواب الأول: الجذر التربيعي لـ (المجموع ÷ عدد الخانات)
-  sqrtResult: DecimalSquareRootResult;
-  unsimplifiedAnswer: number; // الناتج النهائي مع التقسيم مع الجذر (من غير تبسيط)
-  simplifiedAnswer: number; // الناتج النهائي مع التقسيم مع الجذر (بالتبسيط)
-  reductionSteps: number[];
-
-  // 2. الجواب الثاني: الجذر التربيعي لمجموع الخانات مباشرة
+  // 1. الجواب الأول: الجذر التربيعي لمجموع الخانات المحددة مباشرة (بدون قسمة)
   directSumSqrtResult: DecimalSquareRootResult;
-  directSumUnsimplifiedAnswer: number; // الناتج المباشر مع الجذر (من غير تبسيط)
-  directSumSimplifiedAnswer: number; // الناتج المباشر مع الجذر (بالتبسيط)
+  directSumUnsimplifiedAnswer: number; // الناتج لمجموع الخانات مع الجذر (من غير تبسيط)
+  directSumSimplifiedAnswer: number; // الناتج لمجموع الخانات مع الجذر (بالتبسيط)
   directSumReductionSteps: number[];
+
+  // 2. الجواب الثاني: الجذر التربيعي لـ (المجموع ÷ عدد الخانات)
+  sqrtResult: DecimalSquareRootResult;
+  unsimplifiedAnswer: number; // الناتج مع التقسيم مع الجذر (من غير تبسيط)
+  simplifiedAnswer: number; // الناتج مع التقسيم مع الجذر (بالتبسيط)
+  reductionSteps: number[];
 
   // 3. الجواب الثالث: مجموع الخانات المحددة بدون جذر تربيعي (No Square Root)
   directDecimalResult: DecimalSquareRootResult;
-  directDecimalUnsimplifiedAnswer: number; // الناتج المباشر بدون جذر (من غير تبسيط)
-  directDecimalSimplifiedAnswer: number; // الناتج المباشر بدون جذر (بالتبسيط)
+  directDecimalUnsimplifiedAnswer: number; // الناتج لمجموع الخانات بدون جذر (من غير تبسيط)
+  directDecimalSimplifiedAnswer: number; // الناتج لمجموع الخانات بدون جذر (بالتبسيط)
   directDecimalReductionSteps: number[];
 
   // 4. الجواب الرابع: (المجموع ÷ عدد الخانات) بدون جذر تربيعي (No Square Root)

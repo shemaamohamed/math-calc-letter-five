@@ -122,9 +122,9 @@ export function executePhase2(
     throw new Error('قائمة الحروف فارغة');
   }
 
-  // الخطوة 1: نضع القيمة البذرية على كل خانة
+  // الخطوة 1: نضع القيمة البذرية المعتمدة (S1 = Seed)
   const step1Val = seed;
-  const sum1 = new Fraction(BigInt(n * step1Val), ONE);
+  const sum1 = new Fraction(BigInt(step1Val), ONE);
 
   // الخطوة 2: عدد طبيعي (i ÷ n) × i = i^2 / n
   const step2Fractions = chars.map((_, i) => {
@@ -206,16 +206,16 @@ export function executePhase2(
   const divisor = selectedCount > 0 ? selectedCount : 1;
   const selectedAverage = selectedSum.div(new Fraction(BigInt(divisor), ONE));
 
-  // 1. الجواب الأول: مع الجذر التربيعي لـ (المجموع ÷ عدد الخانات)
-  const sqrtResult = selectedAverage.sqrtDecimal(60);
-
-  // 2. الجواب الثاني: مع الجذر التربيعي لمجموع الخانات مباشرة
+  // 1. الجواب الأول: جمع قيم الخانات الكلية ➔ أخذ الجذر التربيعي (Square Root) للمجموع (بدون قسمة)
   const directSumSqrtResult = selectedSum.sqrtDecimal(60);
 
-  // 3. الجواب الثالث: بدون جذر تربيعي لمجموع الخانات المحددة
+  // 2. الجواب الثاني: جمع قيم الخانات الكلية ➔ التقسيم على عدد الخانات ➔ أخذ الجذر التربيعي (Square Root) للناتج
+  const sqrtResult = selectedAverage.sqrtDecimal(60);
+
+  // 3. الجواب الثالث: جمع قيم الخانات الكلية فقط ➔ بدون جذر تربيعي (No Square Root)
   const directDecimalResult = selectedSum.toDecimal(60);
 
-  // 4. الجواب الرابع: بدون جذر تربيعي لـ (المجموع ÷ عدد الخانات)
+  // 4. الجواب الرابع: جمع قيم الخانات الكلية ➔ التقسيم على عدد الخانات ➔ بدون جذر تربيعي (No Square Root)
   const averageDecimalResult = selectedAverage.toDecimal(60);
 
   return {
@@ -227,25 +227,25 @@ export function executePhase2(
     selectedSum,
     selectedAverage,
 
-    // الجواب الأول
-    sqrtResult,
-    unsimplifiedAnswer: sqrtResult.unsimplifiedSum,
-    simplifiedAnswer: sqrtResult.simplifiedSingleDigit,
-    reductionSteps: sqrtResult.reductionSteps,
-
-    // الجواب الثاني
+    // 1. الجواب الأول: مجموع الخانات المحددة ➔ الجذر التربيعي (بدون قسمة)
     directSumSqrtResult,
     directSumUnsimplifiedAnswer: directSumSqrtResult.unsimplifiedSum,
     directSumSimplifiedAnswer: directSumSqrtResult.simplifiedSingleDigit,
     directSumReductionSteps: directSumSqrtResult.reductionSteps,
 
-    // الجواب الثالث (بدون جذر)
+    // 2. الجواب الثاني: (المجموع ÷ عدد الخانات) ➔ الجذر التربيعي
+    sqrtResult,
+    unsimplifiedAnswer: sqrtResult.unsimplifiedSum,
+    simplifiedAnswer: sqrtResult.simplifiedSingleDigit,
+    reductionSteps: sqrtResult.reductionSteps,
+
+    // 3. الجواب الثالث: مجموع الخانات المحددة فقط ➔ بدون جذر تربيعي (No Square Root)
     directDecimalResult,
     directDecimalUnsimplifiedAnswer: directDecimalResult.unsimplifiedSum,
     directDecimalSimplifiedAnswer: directDecimalResult.simplifiedSingleDigit,
     directDecimalReductionSteps: directDecimalResult.reductionSteps,
 
-    // الجواب الرابع (بدون جذر)
+    // 4. الجواب الرابع: (المجموع ÷ عدد الخانات) ➔ بدون جذر تربيعي (No Square Root)
     averageDecimalResult,
     averageDecimalUnsimplifiedAnswer: averageDecimalResult.unsimplifiedSum,
     averageDecimalSimplifiedAnswer: averageDecimalResult.simplifiedSingleDigit,

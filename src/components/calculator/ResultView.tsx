@@ -146,12 +146,12 @@ export default function ResultView({
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-purple-400 animate-ping" />
               <h3 className="text-sm sm:text-base font-black text-purple-300">
-                🏆 الجواب الأول: الجذر التربيعي لـ (المجموع ÷ عدد الخانات) (أول 10 أرقام بعد الفاصلة)
+                🏆 الجواب الأول: الجذر التربيعي لمجموع الخانات المحددة (أول 10 أرقام بعد الفاصلة)
               </h3>
             </div>
             <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
               <span className="bg-purple-500/20 text-purple-300 border border-purple-500/40 px-3 py-0.5 rounded-full font-bold dir-ltr">
-                √({phase2.selectedAverage.num.toString()}/{phase2.selectedAverage.den.toString()})
+                √({phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()})
               </span>
             </div>
           </div>
@@ -159,11 +159,11 @@ export default function ResultView({
           {/* Calculations Breakdown */}
           <div className="p-3 bg-black/60 rounded-xl border border-white/5 space-y-2 text-xs font-mono">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300">
-              <span className="font-sans font-bold text-slate-400">1. صيغة المتوسط الكسري:</span>
-              <span className="dir-ltr text-amber-300 font-bold overflow-x-auto whitespace-nowrap">
-                ({phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()}) ÷ {selectedCount} ={' '}
+              <span className="font-sans font-bold text-slate-400">1. صيغة مجموع الخانات المحددة:</span>
+              <span className="dir-ltr text-purple-300 font-bold overflow-x-auto whitespace-nowrap">
+                S = {selectedSlotsFormula} ={' '}
                 <span className="text-purple-400 font-black">
-                  {phase2.selectedAverage.num.toString()}/{phase2.selectedAverage.den.toString()}
+                  {phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()}
                 </span>
               </span>
             </div>
@@ -171,7 +171,7 @@ export default function ResultView({
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300 pt-1 border-t border-white/5">
               <span className="font-sans font-bold text-slate-400">2. الجذر التربيعي للكسر:</span>
               <span className="dir-ltr text-cyan-300 font-bold">
-                √({phase2.selectedAverage.num.toString()}/{phase2.selectedAverage.den.toString()})
+                √({phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()})
               </span>
             </div>
 
@@ -180,13 +180,13 @@ export default function ResultView({
                 3. الناتج العشري المستخرج (10 أرقام بعد الفاصلة):
               </span>
               {renderDottedDigits(
-                phase2.sqrtResult.intPart,
-                phase2.sqrtResult.first10AfterDot
+                phase2.directSumSqrtResult.intPart,
+                phase2.directSumSqrtResult.first10AfterDot
               )}
               <div className="text-center text-[10px] text-purple-300 font-sans pt-0.5">
-                {phase2.sqrtResult.first10AfterDot.split('').join(' + ')} ={' '}
+                {phase2.directSumSqrtResult.first10AfterDot.split('').join(' + ')} ={' '}
                 <strong className="text-purple-200 text-xs font-mono">
-                  {phase2.unsimplifiedAnswer}
+                  {phase2.directSumUnsimplifiedAnswer}
                 </strong>
               </div>
             </div>
@@ -209,7 +209,7 @@ export default function ResultView({
               <CardContent className="p-4 flex items-center justify-between">
                 <span className="text-xs text-slate-400">مجموع الأرقام العشرية الـ 10:</span>
                 <div className="text-4xl font-black text-purple-400 font-mono drop-shadow-[0_0_12px_rgba(168,85,247,0.5)]">
-                  {phase2.unsimplifiedAnswer}
+                  {phase2.directSumUnsimplifiedAnswer}
                 </div>
               </CardContent>
             </Card>
@@ -230,11 +230,11 @@ export default function ResultView({
                 <div className="text-right">
                   <span className="text-xs text-slate-400 block">مسار الاختزال:</span>
                   <span className="text-[11px] text-indigo-300 font-mono font-bold dir-ltr">
-                    {phase2.reductionSteps.join(' ➔ ')}
+                    {phase2.directSumReductionSteps.join(' ➔ ')}
                   </span>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-indigo-500/20 border-2 border-indigo-500/60 text-indigo-300 font-black text-2xl flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.4)]">
-                  {phase2.simplifiedAnswer}
+                  {phase2.directSumSimplifiedAnswer}
                 </div>
               </CardContent>
             </Card>
@@ -250,12 +250,12 @@ export default function ResultView({
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-blue-400" />
               <h3 className="text-sm sm:text-base font-black text-blue-300">
-                ⭐ الجواب الثاني: الجذر التربيعي لمجموع الخانات المحددة مباشرة (أول 10 أرقام بعد الفاصلة)
+                ⭐ الجواب الثاني: الجذر التربيعي لـ (المجموع ÷ عدد الخانات) (أول 10 أرقام بعد الفاصلة)
               </h3>
             </div>
             <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
               <span className="bg-blue-500/20 text-blue-300 border border-blue-500/40 px-3 py-0.5 rounded-full font-bold dir-ltr">
-                √({phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()})
+                √({phase2.selectedAverage.num.toString()}/{phase2.selectedAverage.den.toString()})
               </span>
             </div>
           </div>
@@ -263,11 +263,11 @@ export default function ResultView({
           {/* Calculations Breakdown */}
           <div className="p-3 bg-black/60 rounded-xl border border-white/5 space-y-2 text-xs font-mono">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300">
-              <span className="font-sans font-bold text-slate-400">1. صيغة مجموع الخانات المحددة:</span>
+              <span className="font-sans font-bold text-slate-400">1. صيغة المتوسط الكسري:</span>
               <span className="dir-ltr text-blue-300 font-bold overflow-x-auto whitespace-nowrap">
-                S = {selectedSlotsFormula} ={' '}
+                ({phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()}) ÷ {selectedCount} ={' '}
                 <span className="text-blue-400 font-black">
-                  {phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()}
+                  {phase2.selectedAverage.num.toString()}/{phase2.selectedAverage.den.toString()}
                 </span>
               </span>
             </div>
@@ -275,7 +275,7 @@ export default function ResultView({
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-slate-300 pt-1 border-t border-white/5">
               <span className="font-sans font-bold text-slate-400">2. الجذر التربيعي للكسر:</span>
               <span className="dir-ltr text-cyan-300 font-bold">
-                √({phase2.selectedSum.num.toString()}/{phase2.selectedSum.den.toString()})
+                √({phase2.selectedAverage.num.toString()}/{phase2.selectedAverage.den.toString()})
               </span>
             </div>
 
@@ -284,13 +284,13 @@ export default function ResultView({
                 3. الناتج العشري المستخرج (10 أرقام بعد الفاصلة):
               </span>
               {renderDottedDigits(
-                phase2.directSumSqrtResult.intPart,
-                phase2.directSumSqrtResult.first10AfterDot
+                phase2.sqrtResult.intPart,
+                phase2.sqrtResult.first10AfterDot
               )}
               <div className="text-center text-[10px] text-blue-300 font-sans pt-0.5">
-                {phase2.directSumSqrtResult.first10AfterDot.split('').join(' + ')} ={' '}
+                {phase2.sqrtResult.first10AfterDot.split('').join(' + ')} ={' '}
                 <strong className="text-blue-200 text-xs font-mono">
-                  {phase2.directSumUnsimplifiedAnswer}
+                  {phase2.unsimplifiedAnswer}
                 </strong>
               </div>
             </div>
@@ -313,7 +313,7 @@ export default function ResultView({
               <CardContent className="p-4 flex items-center justify-between">
                 <span className="text-xs text-slate-400">مجموع الأرقام العشرية الـ 10:</span>
                 <div className="text-4xl font-black text-blue-400 font-mono drop-shadow-[0_0_12px_rgba(59,130,246,0.5)]">
-                  {phase2.directSumUnsimplifiedAnswer}
+                  {phase2.unsimplifiedAnswer}
                 </div>
               </CardContent>
             </Card>
@@ -334,11 +334,11 @@ export default function ResultView({
                 <div className="text-right">
                   <span className="text-xs text-slate-400 block">مسار الاختزال:</span>
                   <span className="text-[11px] text-cyan-300 font-mono font-bold dir-ltr">
-                    {phase2.directSumReductionSteps.join(' ➔ ')}
+                    {phase2.reductionSteps.join(' ➔ ')}
                   </span>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-cyan-500/20 border-2 border-cyan-500/60 text-cyan-300 font-black text-2xl flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.4)]">
-                  {phase2.directSumSimplifiedAnswer}
+                  {phase2.simplifiedAnswer}
                 </div>
               </CardContent>
             </Card>
@@ -567,10 +567,10 @@ export default function ResultView({
               </div>
               <div>
                 <h2 className="text-sm sm:text-base font-black text-slate-100">
-                  الخطوة الأولى: وضع قيمة ({phase2.step1Val}) على كل خانة وتجميع الخانات
+                  الخطوة الأولى: القيمة البذرية المعتمدة ({phase2.step1Val})
                 </h2>
                 <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">
-                  وضع {phase2.step1Val} على كل خانة ➔ جمع قيم الخانات ➔ الناتج النهائي {phase2.sum1.num.toString()} = S1
+                  اعتماد البذرة المستخرجة من القسم الأول ➔ القيمة المعتمدة {phase2.step1Val} = S1
                 </p>
               </div>
             </div>
