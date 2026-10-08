@@ -87,18 +87,18 @@ function HomePage() {
 
                 <Button
                   onClick={() => calculate()}
-                  className="w-full h-11 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-purple-900/30 transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-30 group cursor-pointer"
+                  className="w-full h-11 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-purple-900/30 transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none group cursor-pointer"
                   disabled={!text.trim() || isCalculating}
                 >
                   {isCalculating ? (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin text-white" />
-                      <span>جاري الحساب...</span>
+                    <div className="flex items-center justify-center gap-2.5">
+                      <Loader2 className="w-4 h-4 animate-spin text-purple-200" />
+                      <span className="font-semibold text-purple-100">جاري الحساب الرقمي الدقيق...</span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center gap-2">
                       <span>بدء الحساب الرقمي</span>
-                      <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                      <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform text-amber-300" />
                     </div>
                   )}
                 </Button>

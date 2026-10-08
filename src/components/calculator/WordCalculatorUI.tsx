@@ -19,6 +19,7 @@ import {
   Info,
   Layers,
   Trophy,
+  Loader2,
 } from 'lucide-react';
 
 interface WordCalculatorUIProps {
@@ -93,17 +94,17 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
           <Button
             onClick={handleStartCalc}
             disabled={!text.trim() || isCalculating}
-            className="w-full h-11 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-purple-900/30 transition-all transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-30 cursor-pointer"
+            className="w-full h-11 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-purple-900/30 transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none cursor-pointer"
           >
             {isCalculating ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>جاري الحساب الرقمي الدقيق...</span>
+              <div className="flex items-center justify-center gap-2.5">
+                <Loader2 className="w-4 h-4 animate-spin text-purple-200" />
+                <span className="font-semibold text-purple-100">جاري الحساب الرقمي الدقيق...</span>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <span>بدء الحساب الرقمي (Arbitrary-Precision)</span>
-                <Sparkles className="w-4 h-4" />
+                <Sparkles className="w-4 h-4 text-amber-300" />
               </div>
             )}
           </Button>

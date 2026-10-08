@@ -48,16 +48,19 @@ export function useWordCalculator(initialText = ''): UseWordCalculatorReturn {
       }
 
       setIsCalculating(true);
-      try {
-        const activeIndices = customIndices !== undefined ? customIndices : (selectedIndices.length > 0 ? selectedIndices : undefined);
-        const calcResult = calculateArabicDualPhase(targetText, activeIndices);
-        setResult(calcResult);
-        setSelectedIndices(calcResult.selectedIndices);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'حدث خطأ في عملية الحساب');
-      } finally {
-        setIsCalculating(false);
-      }
+
+      setTimeout(() => {
+        try {
+          const activeIndices = customIndices !== undefined ? customIndices : (selectedIndices.length > 0 ? selectedIndices : undefined);
+          const calcResult = calculateArabicDualPhase(targetText, activeIndices);
+          setResult(calcResult);
+          setSelectedIndices(calcResult.selectedIndices);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'حدث خطأ في عملية الحساب');
+        } finally {
+          setIsCalculating(false);
+        }
+      }, 200);
     },
     [text, selectedIndices]
   );
