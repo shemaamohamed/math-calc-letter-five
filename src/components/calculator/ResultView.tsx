@@ -132,8 +132,15 @@ export default function ResultView({
               قسم النتائج النهائي (جدول الأجوبة الأربعة 4 Final Answers)
             </h2>
           </div>
-          <div className="px-3 py-1 rounded-full bg-purple-950/60 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
-            4 Final Answers
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="px-3 py-1 rounded-full bg-purple-950/60 border border-purple-500/40 text-purple-200 text-xs font-mono font-bold flex items-center gap-1.5 shadow-sm">
+              <span className="font-sans text-[11px] text-purple-300">بذرة القسم الأول:</span>
+              <span className="text-amber-400 font-black text-sm">{result.phase1.seed}</span>
+              <span className="text-[10px] text-slate-400 font-sans">(أساس 260 ➔ S1 = {result.phase1.sum1.num.toString()})</span>
+            </div>
+            <div className="px-3 py-1 rounded-full bg-purple-950/60 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+              4 Final Answers
+            </div>
           </div>
         </div>
 
@@ -146,7 +153,7 @@ export default function ResultView({
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-purple-400 animate-ping" />
               <h3 className="text-sm sm:text-base font-black text-purple-300">
-                🏆 الجواب الأول: الجذر التربيعي لمجموع الخانات المحددة (أول 10 أرقام بعد الفاصلة)
+                🏆 الجواب الأول: جمع 6 ثم حساب أول 10 بعد (.) مع الجذر التربيعي
               </h3>
             </div>
             <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
@@ -250,7 +257,7 @@ export default function ResultView({
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-blue-400" />
               <h3 className="text-sm sm:text-base font-black text-blue-300">
-                ⭐ الجواب الثاني: الجذر التربيعي لـ (المجموع ÷ عدد الخانات) (أول 10 أرقام بعد الفاصلة)
+                ⭐ الجواب الثاني: جمع 6 تقسيم على عدد الخانات ثم حساب أول 10 بعد (.) مع الجذر التربيعي
               </h3>
             </div>
             <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
@@ -354,7 +361,7 @@ export default function ResultView({
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-amber-400" />
               <h3 className="text-sm sm:text-base font-black text-amber-300">
-                💎 الجواب الثالث: مجموع الخانات المحددة (بدون جذر تربيعي - No Square Root)
+                💎 الجواب الثالث: جمع 6 حساب أول 10 بعد (.) (بدون جذر تربيعي)
               </h3>
             </div>
             <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
@@ -450,7 +457,7 @@ export default function ResultView({
         </div>
 
         {/* ── الجواب الرابع (إضافة جديدة - بدون جذر تربيعي) ── */}
-        <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-emerald-950/30 via-slate-900/80 to-slate-900/90 border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.15)] relative overflow-hidden">
+        <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-emerald-950/30 via-slate-900/80 to-slate-900/90 border border-emerald-500/40 shadow-[0_0_30px_rgba(160,185,129,0.15)] relative overflow-hidden">
           <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500" />
 
           {/* Header */}
@@ -458,7 +465,7 @@ export default function ResultView({
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-emerald-400" />
               <h3 className="text-sm sm:text-base font-black text-emerald-300">
-                🚀 الجواب الرابع: (المجموع ÷ عدد الخانات) (بدون جذر تربيعي - No Square Root)
+                🚀 الجواب الرابع: جمع 6 تقسيم على عدد الخانات حساب أول 10 بعد (.) (بدون جذر)
               </h3>
             </div>
             <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
@@ -716,12 +723,12 @@ export default function ResultView({
                     <th className="p-2.5 text-center">الخانة (الترتيب)</th>
                     <th className="p-2.5 text-center">حرف</th>
                     <th className="p-2.5 text-center">خطوة 1 (القيمة {phase2.step1Val})</th>
-                    <th className="p-2.5 text-center">خطوة 2 (+ أخر خانة × نفسها)</th>
-                    <th className="p-2.5 text-center">خطوة 3 (S2 × S1 ÷)</th>
+                    <th className="p-2.5 text-center">خطوة 2 ((الخانة ÷ عدد الخانات) × الخانة)</th>
+                    <th className="p-2.5 text-center">خطوة 3 ((خطوة 2 ÷ S2) × S1)</th>
                     <th className="p-2.5 text-center">خطوة 4 (المتغير الحرفي)</th>
-                    <th className="p-2.5 text-center">خطوة 5 (+ آخر 3 × 100)</th>
-                    <th className="p-2.5 text-center">خطوة 6 (النسبة: ÷ 100 × S5)</th>
-                    <th className="p-2.5 text-center">الناتج المعتمد (المتغير × النسبة 6)</th>
+                    <th className="p-2.5 text-center">خطوة 5 (خطوة 3 ÷ آخر خانة × 100)</th>
+                    <th className="p-2.5 text-center">خطوة 6 (النسبة %: خطوة 5 ÷ S5 × 100)</th>
+                    <th className="p-2.5 text-center">الناتج المعتمد (خطوة 4 × النسبة 6)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 font-mono">
@@ -923,8 +930,11 @@ export default function ResultView({
                     >
                       {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                     </div>
-                    <span>
-                      {s.char} #{s.pos} {isSelected ? '✓' : ''}
+                    <span className="flex items-center gap-1.5 font-sans">
+                      <span className="font-bold">{s.char}</span>
+                      <span className="text-slate-400 text-[10px]">#{s.pos} =</span>
+                      <strong className="font-mono text-xs dir-ltr">{s.finalValueFrac.num.toString()}/{s.finalValueFrac.den.toString()}</strong>
+                      {isSelected && <span className="text-emerald-400 font-bold mr-0.5">✓</span>}
                     </span>
                   </button>
                 );

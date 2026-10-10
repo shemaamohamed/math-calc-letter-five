@@ -871,8 +871,11 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                       >
                         {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                       </div>
-                      <span>
-                        {s.char} #{s.pos} {isSelected ? '✓' : ''}
+                      <span className="flex items-center gap-1.5 font-sans">
+                        <span className="font-bold">{s.char}</span>
+                        <span className="text-slate-400 text-[10px]">#{s.pos} =</span>
+                        <strong className="font-mono text-xs dir-ltr">{s.finalValueFrac.num.toString()}/{s.finalValueFrac.den.toString()}</strong>
+                        {isSelected && <span className="text-emerald-400 font-bold mr-0.5">✓</span>}
                       </span>
                     </button>
                   );
