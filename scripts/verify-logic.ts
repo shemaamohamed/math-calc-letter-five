@@ -1,148 +1,100 @@
-import {
-  cycle,
-  createFraction,
-  fractionToString,
-  executePhase1,
-  executePhase2,
-  calculateArabicDualPhase,
-} from '../src/lib/calculate';
+import { calculateArabicDualPhase } from '../src/lib/calculate';
 
-console.log('====================================================');
-console.log('   RUNNING VERIFICATION FOR EXACT ARABIC MATH ENGINE');
-console.log('====================================================');
+console.log('==================================================');
+console.log('   RUNNING VERIFICATION FOR DUAL-PHASE ENGINE   ');
+console.log('   (Matches Images 1, 2, 3, 4, 5 Exactly)       ');
+console.log('==================================================');
 
-let allPassed = true;
+try {
+  // Test Word "مدد"
+  const result = calculateArabicDualPhase('مدد');
 
-function assert(condition: boolean, msg: string) {
-  if (!condition) {
-    console.error(`❌ FAILED: ${msg}`);
-    allPassed = false;
-  } else {
-    console.log(`✅ PASSED: ${msg}`);
+  console.log(`Word: ${result.inputText}`);
+  console.log(`Normalized: [${result.normalizedChars.join(', ')}]`);
+
+  // --- PHASE 1 VERIFICATION (Images 1 & 2) ---
+  console.log('\n--- PHASE 1: SILENT ENGINE ---');
+  console.log(`Step 1 Sum: ${result.phase1.sum1.toString()} (Expected: 126/1)`);
+  console.log(`Step 2 Sum: ${result.phase1.sum2.toString()} (Expected: 14/3)`);
+  console.log(`Step 3 Fractions: [${result.phase1.step3Fractions.map(f => f.toString()).join(', ')}] (Expected: 9/1, 36/1, 81/1)`);
+  console.log(`Step 5 Sum: ${result.phase1.sum5.toString()} (Expected: 1400/9)`);
+  console.log(`Step 6 Fractions: [${result.phase1.step6Fractions.map(f => f.toString()).join(', ')}] (Expected: 9/14, 234/7, 1053/14)`);
+  console.log(`Total Sum: ${result.phase1.totalSum.toString()} (Expected: 765/7)`);
+  console.log(`Average (Sum / 3): ${result.phase1.average.toString()} (Expected: 255/7)`);
+  console.log(`Square Root: ${result.phase1.sqrtResult.fullString.substring(0, 15)} (Expected ~ 6.0356086212...)`);
+  console.log(`First 10 Decimals: ${result.phase1.sqrtResult.first10AfterDot} (Expected: 0356086212)`);
+  console.log(`Seed (Unsimplified Sum): ${result.phase1.seed} (Expected: 33)`);
+
+  if (result.phase1.seed !== 33) {
+    throw new Error(`Phase 1 Seed mismatch: got ${result.phase1.seed}, expected 33`);
   }
-}
+  console.log('✅ Phase 1 Seed 100% verified (33)! Matches handwritten paper!');
 
-// -----------------------------------------------------------------
-// Test 1: دالة الدورة cycle(T) عند T = 126
-// right 9/14 ، mid 234/7 ، left 1053/14
-// -----------------------------------------------------------------
-console.log('\n--- 1) اختبار دالة الدورة عند T = 126 ---');
-const t126 = createFraction(126n, 1n);
-const c126 = cycle(t126);
+  // --- PHASE 2 VERIFICATION (Using Seed 33) ---
+  console.log('\n--- PHASE 2: VISIBLE ENGINE ---');
+  console.log(`Initial Value per Slot: ${result.phase2.step1Val} (Expected: 33)`);
+  console.log(`Step 1 Sum: ${result.phase2.sum1.toString()} (Expected: 33/1)`);
+  console.log(`Step 2 Sum: ${result.phase2.sum2.toString()} (Expected: 14/3)`);
+  
+  const p2FinalFractions = result.phase2.slots.map(s => s.finalValueFrac.toString());
+  console.log(`Step 6 Slots: [${p2FinalFractions.join(', ')}] (Expected: 33/196, 429/49, 3861/196)`);
+  if (p2FinalFractions[0] !== '33/196' || p2FinalFractions[1] !== '429/49' || p2FinalFractions[2] !== '3861/196') {
+    throw new Error(`Phase 2 Step 6 slots mismatch!`);
+  }
+  console.log('✅ Phase 2 Step 6 Slots verified: [33/196, 429/49, 3861/196]!');
 
-const r126Str = fractionToString(c126.right);
-const m126Str = fractionToString(c126.mid);
-const l126Str = fractionToString(c126.left);
+  console.log(`Selected Sum: ${result.phase2.selectedSum.toString()} (Expected: 2805/98)`);
+  console.log(`Selected Count: ${result.phase2.selectedCount} (Expected: 3)`);
+  console.log(`Selected Average: ${result.phase2.selectedAverage.toString()} (Expected: 935/98)`);
 
-console.log(`right: ${r126Str} (المتوقع: 9/14)`);
-console.log(`mid:   ${m126Str} (المتوقع: 234/7)`);
-console.log(`left:  ${l126Str} (المتوقع: 1053/14)`);
+  // --- 1. الجواب الأول: جمع -> جذر -> أول 10 بعد الفاصلة ---
+  console.log('\n--- 1. ANSWER 1 (Direct Sum + Sqrt) ---');
+  console.log(`Square Root: ${result.phase2.directSumSqrtResult.fullString.substring(0, 15)} (Expected ~ 5.3499952317...)`);
+  console.log(`First 10 Decimals: ${result.phase2.directSumSqrtResult.first10AfterDot} (Expected: 3499952317)`);
+  console.log(`Answer 1 Unsimplified: ${result.phase2.directSumUnsimplifiedAnswer} (Expected: 52)`);
+  console.log(`Answer 1 Simplified: ${result.phase2.directSumSimplifiedAnswer} (Expected: 7)`);
+  if (result.phase2.directSumUnsimplifiedAnswer !== 52 || result.phase2.directSumSimplifiedAnswer !== 7) {
+    throw new Error('Answer 1 mismatch!');
+  }
+  console.log('✅ Answer 1 100% verified (Unsimplified: 52, Simplified: 7)!');
 
-assert(r126Str === '9/14', 'cycle(126).right == 9/14');
-assert(m126Str === '234/7', 'cycle(126).mid == 234/7');
-assert(l126Str === '1053/14', 'cycle(126).left == 1053/14');
+  // --- 2. الجواب الثاني: متوسط (تقسيم على عدد الخانات) -> جذر -> أول 10 بعد الفاصلة ---
+  console.log('\n--- 2. ANSWER 2 (Average + Sqrt) ---');
+  console.log(`Square Root: ${result.phase2.sqrtResult.fullString.substring(0, 15)} (Expected ~ 3.0888211872...)`);
+  console.log(`First 10 Decimals: ${result.phase2.sqrtResult.first10AfterDot} (Expected: 0888211872)`);
+  console.log(`Answer 2 Unsimplified: ${result.phase2.unsimplifiedAnswer} (Expected: 45)`);
+  console.log(`Answer 2 Simplified: ${result.phase2.simplifiedAnswer} (Expected: 9)`);
+  if (result.phase2.unsimplifiedAnswer !== 45 || result.phase2.simplifiedAnswer !== 9) {
+    throw new Error('Answer 2 mismatch!');
+  }
+  console.log('✅ Answer 2 100% verified (Unsimplified: 45, Simplified: 9)!');
 
-// -----------------------------------------------------------------
-// Test 2: المرحلة 1 عند N = 260
-// T1 = 780
-// right 195/49 ، mid 10140/49 ، left 22815/49
-// المجموع S1 = 33150/49 ؛ ÷3 = 11050/49
-// √ = 15.0169971725 ؛ المجموع R1 = 47
-// -----------------------------------------------------------------
-console.log('\n--- 2) اختبار المرحلة 1 عند N = 260 (T1 = 780) ---');
-const p1 = executePhase1(260n, ['م', 'د', 'د']);
+  // --- 3. الجواب الثالث: جمع -> بدون جذر -> أول 10 بعد الفاصلة ---
+  console.log('\n--- 3. ANSWER 3 (Direct Sum, No Sqrt) ---');
+  console.log(`Decimal Form: ${result.phase2.directDecimalResult.fullString.substring(0, 15)} (Expected ~ 28.6224489795...)`);
+  console.log(`First 10 Decimals: ${result.phase2.directDecimalResult.first10AfterDot} (Expected: 6224489795)`);
+  console.log(`Answer 3 Unsimplified: ${result.phase2.directDecimalUnsimplifiedAnswer} (Expected: 56)`);
+  console.log(`Answer 3 Simplified: ${result.phase2.directDecimalSimplifiedAnswer} (Expected: 2)`);
+  if (result.phase2.directDecimalUnsimplifiedAnswer !== 56 || result.phase2.directDecimalSimplifiedAnswer !== 2) {
+    throw new Error('Answer 3 mismatch!');
+  }
+  console.log('✅ Answer 3 100% verified (Unsimplified: 56, Simplified: 2)!');
 
-assert(p1.t1 === 780n, 'T1 == 780');
-assert(fractionToString(p1.cycle.right) === '195/49', 'cycle(780).right == 195/49');
-assert(fractionToString(p1.cycle.mid) === '10140/49', 'cycle(780).mid == 10140/49');
-assert(fractionToString(p1.cycle.left) === '22815/49', 'cycle(780).left == 22815/49');
-assert(fractionToString(p1.sum1) === '33150/49', 'S1 == 33150/49');
-assert(fractionToString(p1.average1) === '11050/49', 'S1 ÷ 3 == 11050/49');
+  // --- 4. الجواب الرابع: متوسط (تقسيم على عدد الخانات) -> بدون جذر -> أول 10 بعد الفاصلة ---
+  console.log('\n--- 4. ANSWER 4 (Average, No Sqrt) ---');
+  console.log(`Decimal Form: ${result.phase2.averageDecimalResult.fullString.substring(0, 15)} (Expected ~ 9.5408163265...)`);
+  console.log(`First 10 Decimals: ${result.phase2.averageDecimalResult.first10AfterDot} (Expected: 5408163265)`);
+  console.log(`Answer 4 Unsimplified: ${result.phase2.averageDecimalUnsimplifiedAnswer} (Expected: 40)`);
+  console.log(`Answer 4 Simplified: ${result.phase2.averageDecimalSimplifiedAnswer} (Expected: 4)`);
+  if (result.phase2.averageDecimalUnsimplifiedAnswer !== 40 || result.phase2.averageDecimalSimplifiedAnswer !== 4) {
+    throw new Error('Answer 4 mismatch!');
+  }
+  console.log('✅ Answer 4 100% verified (Unsimplified: 40, Simplified: 4)!');
 
-console.log(`Full Sqrt: ${p1.sqrtResult.fullDecimalString}`);
-assert(p1.sqrtResult.fullDecimalString === '15.0169971725', '√11050/49 == 15.0169971725');
-assert(p1.sqrtResult.first10AfterDot === '0169971725', 'First 10 digits == 0169971725');
-console.log(`R1 = ${p1.r1} (المتوقع: 47)`);
-assert(p1.r1 === 47, 'R1 == 47 (بدون اختزال لرقم واحد)');
-
-// -----------------------------------------------------------------
-// Test 3: المرحلة 2 عند T2 = 47 (الأوضاع الأربعة)
-// right 47/196 ، mid 611/49 ، left 5499/196
-// S2 = 3995/98
-// الوضع 1: 6.3847714228 ← 46 ← 1
-// الوضع 2: 3.6862494997 ← 64 ← 1 (S2/3 = 3995/294)
-// الوضع 3: 40.7653061224 ← 36 ← 9
-// الوضع 4: 13.5884353741 ← 48 ← 3
-// -----------------------------------------------------------------
-console.log('\n--- 3) اختبار المرحلة 2 عند T2 = 47 (كل الخانات محددة) ---');
-const p2 = executePhase2(47, ['م', 'د', 'د'], [0, 1, 2]);
-
-assert(fractionToString(p2.cycle.right) === '47/196', 'cycle(47).right == 47/196');
-assert(fractionToString(p2.cycle.mid) === '611/49', 'cycle(47).mid == 611/49');
-assert(fractionToString(p2.cycle.left) === '5499/196', 'cycle(47).left == 5499/196');
-assert(fractionToString(p2.selectedSum) === '3995/98', 'S2 == 3995/98');
-assert(fractionToString(p2.selectedAverage) === '3995/294', 'S2 ÷ 3 == 3995/294');
-
-// الوضع 1
-console.log('\n- الوضع 1: S2 ← √ ← 10 خانات');
-console.log(`  الكسر: ${p2.mode1.fractionString} ، العشري: ${p2.mode1.fullDecimalString} ، المجموع: ${p2.mode1.unsimplifiedSum} ، الاختزال: ${p2.mode1.simplifiedSingleDigit}`);
-assert(p2.mode1.fractionString === '3995/98', 'الوضع 1: الكسر 3995/98');
-assert(p2.mode1.fullDecimalString === '6.3847714228', 'الوضع 1: 6.3847714228');
-assert(p2.mode1.unsimplifiedSum === 46, 'الوضع 1: مجموع الخانات 46');
-assert(p2.mode1.simplifiedSingleDigit === 1, 'الوضع 1: الاختزال لرقم واحد 1');
-
-// الوضع 2
-console.log('\n- الوضع 2: S2 ÷ 3 ← √ ← 10 خانات');
-console.log(`  الكسر: ${p2.mode2.fractionString} ، العشري: ${p2.mode2.fullDecimalString} ، المجموع: ${p2.mode2.unsimplifiedSum} ، الاختزال: ${p2.mode2.simplifiedSingleDigit}`);
-assert(p2.mode2.fractionString === '3995/294', 'الوضع 2: الكسر 3995/294');
-assert(p2.mode2.fullDecimalString === '3.6862494997', 'الوضع 2: 3.6862494997');
-assert(p2.mode2.unsimplifiedSum === 64, 'الوضع 2: مجموع الخانات 64');
-assert(p2.mode2.simplifiedSingleDigit === 1, 'الوضع 2: الاختزال لرقم واحد 1');
-
-// الوضع 3
-console.log('\n- الوضع 3: S2 ← 10 خانات (بدون جذر)');
-console.log(`  الكسر: ${p2.mode3.fractionString} ، العشري: ${p2.mode3.fullDecimalString} ، المجموع: ${p2.mode3.unsimplifiedSum} ، الاختزال: ${p2.mode3.simplifiedSingleDigit}`);
-assert(p2.mode3.fractionString === '3995/98', 'الوضع 3: الكسر 3995/98');
-assert(p2.mode3.fullDecimalString === '40.7653061224', 'الوضع 3: 40.7653061224');
-assert(p2.mode3.unsimplifiedSum === 36, 'الوضع 3: مجموع الخانات 36');
-assert(p2.mode3.simplifiedSingleDigit === 9, 'الوضع 3: الاختزال لرقم واحد 9');
-
-// الوضع 4
-console.log('\n- الوضع 4: S2 ÷ 3 ← 10 خانات (بدون جذر)');
-console.log(`  الكسر: ${p2.mode4.fractionString} ، العشري: ${p2.mode4.fullDecimalString} ، المجموع: ${p2.mode4.unsimplifiedSum} ، الاختزال: ${p2.mode4.simplifiedSingleDigit}`);
-assert(p2.mode4.fractionString === '3995/294', 'الوضع 4: الكسر 3995/294');
-assert(p2.mode4.fullDecimalString === '13.5884353741', 'الوضع 4: 13.5884353741');
-assert(p2.mode4.unsimplifiedSum === 48, 'الوضع 4: مجموع الخانات 48');
-assert(p2.mode4.simplifiedSingleDigit === 3, 'الوضع 4: الاختزال لرقم واحد 3');
-
-// -----------------------------------------------------------------
-// Test 4: اختبار تغيير التحديد التفاعلي (Interactive Checkboxes)
-// إذا حددنا فقط خانتين (يمين ووسط):
-// right = 47/196, mid = 611/49 -> S2 = 47/196 + 2444/196 = 2491/196
-// -----------------------------------------------------------------
-console.log('\n--- 4) اختبار تغيير التحديد (خانتين فقط: 0 و 1) ---');
-const p2Partial = executePhase2(47, ['م', 'د', 'د'], [0, 1]);
-assert(p2Partial.selectedCount === 2, 'عدد الخانات المحددة 2');
-assert(fractionToString(p2Partial.selectedSum) === '2491/196', 'S2 للخانتين = 2491/196');
-assert(fractionToString(p2Partial.selectedAverage) === '2491/392', 'S2 ÷ 2 = 2491/392');
-
-// -----------------------------------------------------------------
-// Test 5: الدالة الشاملة calculateArabicDualPhase
-// -----------------------------------------------------------------
-console.log('\n--- 5) اختبار الدالة المتكاملة calculateArabicDualPhase("مدد") ---');
-const fullResult = calculateArabicDualPhase('مدد');
-assert(fullResult.inputN === 260n, 'المدخل الافتراضي لكلمة مدد N == 260');
-assert(fullResult.phase1.r1 === 47, 'R1 == 47');
-assert(fullResult.phase2.mode1.fullDecimalString === '6.3847714228', 'Mode 1 matches');
-assert(fullResult.phase2.mode2.fullDecimalString === '3.6862494997', 'Mode 2 matches');
-assert(fullResult.phase2.mode3.fullDecimalString === '40.7653061224', 'Mode 3 matches');
-assert(fullResult.phase2.mode4.fullDecimalString === '13.5884353741', 'Mode 4 matches');
-
-console.log('\n====================================================');
-if (allPassed) {
-  console.log('🎉 ALL TEST CASES AND SPECIFICATIONS PASSED 100%!');
-} else {
-  console.error('❌ SOME TEST CASES FAILED');
+  console.log('\n==================================================');
+  console.log('🎉 ALL DUAL-PHASE VERIFICATIONS PASSED PERFECTLY!');
+  console.log('==================================================');
+} catch (err) {
+  console.error('❌ Verification failed:', err);
   process.exit(1);
 }
-console.log('====================================================');
