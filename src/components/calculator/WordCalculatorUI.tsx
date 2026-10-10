@@ -146,7 +146,7 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                     {result.phase1.seed}
                   </span>
                   <span className="text-[10px] text-slate-400">
-                    (تُحقن تلقائياً في خطوة 1 للقسم الثاني)
+                    (أساس 260 ➔ S1 = {result.phase1.sum1.num.toString()} ➔ تُحقن تلقائياً في خطوة 1)
                   </span>
                 </div>
               </div>
@@ -172,7 +172,7 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-purple-400 animate-ping" />
                   <h3 className="text-sm sm:text-base font-black text-purple-300">
-                    🏆 الجواب الأول: الجذر التربيعي لمجموع الخانات المحددة (أول 10 أرقام بعد الفاصلة)
+                    🏆 الجواب الأول: جمع 6 ثم حساب أول 10 بعد (.) مع الجذر التربيعي
                   </h3>
                 </div>
                 <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
@@ -269,7 +269,7 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-blue-400" />
                   <h3 className="text-sm sm:text-base font-black text-blue-300">
-                    ⭐ الجواب الثاني: الجذر التربيعي لـ (المجموع ÷ عدد الخانات) (أول 10 أرقام بعد الفاصلة)
+                    ⭐ الجواب الثاني: جمع 6 تقسيم على عدد الخانات ثم حساب أول 10 بعد (.) مع الجذر التربيعي
                   </h3>
                 </div>
                 <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
@@ -369,7 +369,7 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-amber-400" />
                   <h3 className="text-sm sm:text-base font-black text-amber-300">
-                    💎 الجواب الثالث: مجموع الخانات المحددة (بدون جذر تربيعي - No Square Root)
+                    💎 الجواب الثالث: جمع 6 حساب أول 10 بعد (.) (بدون جذر تربيعي)
                   </h3>
                 </div>
                 <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
@@ -466,7 +466,7 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-emerald-400" />
                   <h3 className="text-sm sm:text-base font-black text-emerald-300">
-                    🚀 الجواب الرابع: (المجموع ÷ عدد الخانات) (بدون جذر تربيعي - No Square Root)
+                    🚀 الجواب الرابع: جمع 6 تقسيم على عدد الخانات حساب أول 10 بعد (.) (بدون جذر)
                   </h3>
                 </div>
                 <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
@@ -682,13 +682,13 @@ export default function WordCalculatorUI({ initialText = '' }: WordCalculatorUIP
                       <tr className="border-b border-white/10 bg-white/[0.03] text-slate-400 font-bold text-[11px]">
                         <th className="p-2.5 text-center">الخانة</th>
                         <th className="p-2.5 text-center">الحرف</th>
-                        <th className="p-2.5 text-center">خطوة 1 (القيمة الأولى)</th>
-                        <th className="p-2.5 text-center">خطوة 2 (i²÷n)</th>
-                        <th className="p-2.5 text-center">خطوة 3 (÷S2 × S1)</th>
-                        <th className="p-2.5 text-center">خطوة 4 (جمع الحروف)</th>
-                        <th className="p-2.5 text-center">خطوة 5 (×100)</th>
-                        <th className="p-2.5 text-center">خطوة 6 (النسبة %)</th>
-                        <th className="p-2.5 text-center">الناتج النهائي</th>
+                        <th className="p-2.5 text-center">خطوة 1 (القيمة {result.phase2.step1Val})</th>
+                        <th className="p-2.5 text-center">خطوة 2 ((الخانة ÷ عدد الخانات) × الخانة)</th>
+                        <th className="p-2.5 text-center">خطوة 3 ((خطوة 2 ÷ S2) × S1)</th>
+                        <th className="p-2.5 text-center">خطوة 4 (المتغير الحرفي)</th>
+                        <th className="p-2.5 text-center">خطوة 5 (خطوة 3 ÷ آخر خانة × 100)</th>
+                        <th className="p-2.5 text-center">خطوة 6 (النسبة %: خطوة 5 ÷ S5 × 100)</th>
+                        <th className="p-2.5 text-center">الناتج المعتمد (خطوة 4 × النسبة 6)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5 font-mono">
