@@ -1,11 +1,12 @@
 /**
- * Test script for Dual-Phase calculation engine
+ * Test script for Exact Arabic Math Engine
  */
 
 const ZERO = 0n;
 const ONE = 1n;
 const TWO = 2n;
-const TEN = 10n;
+const TEN_POW_10 = 10_000_000_000n;
+const TEN_POW_20 = 100_000_000_000_000_000_000n;
 
 function gcd(a, b) {
   let x = a < ZERO ? -a : a;
@@ -30,176 +31,106 @@ function bigIntSqrt(n) {
   return x0;
 }
 
-class Fraction {
-  constructor(num, den = ONE) {
-    let n = BigInt(num);
-    let d = BigInt(den);
-    if (d === ZERO) throw new Error('Division by zero');
-    if (d < ZERO) {
-      n = -n;
-      d = -d;
-    }
-    const g = gcd(n, d);
-    this.num = n / g;
-    this.den = d / g;
+function createFraction(num, den = ONE) {
+  let n = BigInt(num);
+  let d = BigInt(den);
+  if (d === ZERO) throw new Error('Division by zero');
+  if (d < ZERO) {
+    n = -n;
+    d = -d;
   }
-
-  add(other) {
-    return new Fraction(this.num * other.den + other.num * this.den, this.den * other.den);
-  }
-
-  sub(other) {
-    return new Fraction(this.num * other.den - other.num * this.den, this.den * other.den);
-  }
-
-  mul(other) {
-    return new Fraction(this.num * other.num, this.den * other.den);
-  }
-
-  div(other) {
-    return new Fraction(this.num * other.den, this.den * other.num);
-  }
-
-  toString() {
-    return `${this.num}/${this.den}`;
-  }
-
-  sqrtDecimal(precision = 60) {
-    const p = BigInt(precision);
-    const scale = TEN ** (p * TWO);
-    const scaledNum = (this.num * scale) / this.den;
-    const sqrtInt = bigIntSqrt(scaledNum);
-
-    const str = sqrtInt.toString().padStart(precision + 1, '0');
-    const intPart = str.slice(0, str.length - precision);
-    const fracPart = str.slice(str.length - precision);
-    const fullString = `${intPart}.${fracPart}`;
-
-    const first10AfterDot = fracPart.substring(0, 10);
-    const digitsList = first10AfterDot.split('').map(d => parseInt(d, 10)).filter(d => !isNaN(d));
-    const unsimplifiedSum = digitsList.reduce((acc, val) => acc + val, 0);
-
-    const reductionSteps = [unsimplifiedSum];
-    let current = unsimplifiedSum;
-    while (current >= 10) {
-      current = current
-        .toString()
-        .split('')
-        .reduce((acc, digit) => acc + parseInt(digit, 10), 0);
-      reductionSteps.push(current);
-    }
-
-    return {
-      fullString,
-      first10AfterDot,
-      digitsList,
-      unsimplifiedSum,
-      reductionSteps,
-      simplifiedSingleDigit: reductionSteps[reductionSteps.length - 1],
-    };
-  }
+  const g = gcd(n, d);
+  return { num: n / g, den: d / g };
 }
 
-function runDualPhase(chars, selectedIndices = null) {
-  const n = chars.length;
+function add(a, b) {
+  return createFraction(a.num * b.den + b.num * a.den, a.den * b.den);
+}
 
-  // --- PHASE 1 (Initial = 42 for each slot) ---
-  const s1_p1 = new Fraction(BigInt(n * 42), ONE);
-  const step2_p1 = chars.map((_, i) => new Fraction(BigInt((i + 1) * (i + 1)), BigInt(n)));
-  let sum2_p1 = new Fraction(0n, ONE);
-  step2_p1.forEach(f => sum2_p1 = sum2_p1.add(f));
+function div(a, b) {
+  return createFraction(a.num * b.den, a.den * b.num);
+}
 
-  const step3_p1 = step2_p1.map(v2 => v2.div(sum2_p1).mul(s1_p1));
-  const v3_last_p1 = step3_p1[n - 1];
+function cycle(T) {
+  const right = createFraction(T.num, T.den * 196n);
+  const mid = createFraction(T.num * 52n, T.den * 196n);
+  const left = createFraction(T.num * 117n, T.den * 196n);
+  return { right, mid, left };
+}
 
-  const groups_p1 = {};
-  chars.forEach((c, idx) => {
-    groups_p1[c] = groups_p1[c] ? groups_p1[c].add(step3_p1[idx]) : step3_p1[idx];
-  });
+function evalSqrt10(f) {
+  const scaled = (f.num * TEN_POW_20) / f.den;
+  const v = bigIntSqrt(scaled);
+  const intVal = v / TEN_POW_10;
+  const fracVal = v % TEN_POW_10;
+  const intPart = intVal.toString();
+  const first10 = fracVal.toString().padStart(10, '0');
+  const digits = first10.split('').map(Number);
+  const sum = digits.reduce((a, b) => a + b, 0);
 
-  const step5_p1 = step3_p1.map(v3 => v3.div(v3_last_p1).mul(new Fraction(100n, ONE)));
-  let sum5_p1 = new Fraction(0n, ONE);
-  step5_p1.forEach(f => sum5_p1 = sum5_p1.add(f));
-
-  const ratios_p1 = step5_p1.map(v5 => v5.div(sum5_p1).mul(new Fraction(100n, ONE)));
-  const step6_p1 = chars.map((c, idx) => {
-    return groups_p1[c].mul(ratios_p1[idx]).div(new Fraction(100n, ONE));
-  });
-
-  let totalSum_p1 = new Fraction(0n, ONE);
-  step6_p1.forEach(f => totalSum_p1 = totalSum_p1.add(f));
-  const avg_p1 = totalSum_p1.div(new Fraction(BigInt(n), ONE));
-  const sqrt_p1 = avg_p1.sqrtDecimal(60);
-  const seed = sqrt_p1.unsimplifiedSum; // 41
-
-  // --- PHASE 2 (Initial = seed) ---
-  const s1_p2 = new Fraction(BigInt(n * seed), ONE);
-  const step2_p2 = chars.map((_, i) => new Fraction(BigInt((i + 1) * (i + 1)), BigInt(n)));
-  let sum2_p2 = new Fraction(0n, ONE);
-  step2_p2.forEach(f => sum2_p2 = sum2_p2.add(f));
-
-  const step3_p2 = step2_p2.map(v2 => v2.div(sum2_p2).mul(s1_p2));
-  const v3_last_p2 = step3_p2[n - 1];
-
-  const groups_p2 = {};
-  chars.forEach((c, idx) => {
-    groups_p2[c] = groups_p2[c] ? groups_p2[c].add(step3_p2[idx]) : step3_p2[idx];
-  });
-
-  const step5_p2 = step3_p2.map(v3 => v3.div(v3_last_p2).mul(new Fraction(100n, ONE)));
-  let sum5_p2 = new Fraction(0n, ONE);
-  step5_p2.forEach(f => sum5_p2 = sum5_p2.add(f));
-
-  const ratios_p2 = step5_p2.map(v5 => v5.div(sum5_p2).mul(new Fraction(100n, ONE)));
-  const step6_p2 = chars.map((c, idx) => {
-    return groups_p2[c].mul(ratios_p2[idx]).div(new Fraction(100n, ONE));
-  });
-
-  const defaultSel = selectedIndices || chars.map((_, i) => i);
-  let selSum = new Fraction(0n, ONE);
-  let selCount = 0;
-  chars.forEach((_, idx) => {
-    if (defaultSel.includes(idx)) {
-      selSum = selSum.add(step6_p2[idx]);
-      selCount++;
-    }
-  });
-
-  const divisor = selCount > 0 ? selCount : 1;
-  const selAvg = selSum.div(new Fraction(BigInt(divisor), ONE));
-  const sqrt_p2 = selAvg.sqrtDecimal(60);
-
-  // Direct sum sqrt without division
-  const sqrt_directSum = selSum.sqrtDecimal(60);
-
+  const steps = [sum];
+  let cur = sum;
+  while (cur >= 10) {
+    cur = cur.toString().split('').reduce((a, b) => a + Number(b), 0);
+    steps.push(cur);
+  }
   return {
-    phase1: { seed, avg: avg_p1.toString(), sqrt: sqrt_p1.fullString.substring(0, 15) },
-    phase2: {
-      step6: step6_p2.map(f => f.toString()),
-      selSum: selSum.toString(),
-      selCount,
-      // With division (Average)
-      withDivision: {
-        selAvg: selAvg.toString(),
-        sqrt: sqrt_p2.fullString.substring(0, 15),
-        first10: sqrt_p2.first10AfterDot,
-        unsimplified: sqrt_p2.unsimplifiedSum,
-        simplified: sqrt_p2.simplifiedSingleDigit,
-        steps: sqrt_p2.reductionSteps,
-      },
-      // Without division (Direct Sum)
-      withoutDivision: {
-        sum: selSum.toString(),
-        sqrt: sqrt_directSum.fullString.substring(0, 15),
-        first10: sqrt_directSum.first10AfterDot,
-        unsimplified: sqrt_directSum.unsimplifiedSum,
-        simplified: sqrt_directSum.simplifiedSingleDigit,
-        steps: sqrt_directSum.reductionSteps,
-      },
-    },
+    fractionString: `${f.num}/${f.den}`,
+    decimal: `${intPart}.${first10}`,
+    sum,
+    singleDigit: steps[steps.length - 1],
   };
 }
 
-const res = runDualPhase(['م', 'د', 'د']);
-console.log('TEST RESULT FOR مدد:');
-console.log(JSON.stringify(res, null, 2));
+function evalNoSqrt10(f) {
+  const v = (f.num * TEN_POW_10) / f.den;
+  const intVal = v / TEN_POW_10;
+  const fracVal = v % TEN_POW_10;
+  const intPart = intVal.toString();
+  const first10 = fracVal.toString().padStart(10, '0');
+  const digits = first10.split('').map(Number);
+  const sum = digits.reduce((a, b) => a + b, 0);
+
+  const steps = [sum];
+  let cur = sum;
+  while (cur >= 10) {
+    cur = cur.toString().split('').reduce((a, b) => a + Number(b), 0);
+    steps.push(cur);
+  }
+  return {
+    fractionString: `${f.num}/${f.den}`,
+    decimal: `${intPart}.${first10}`,
+    sum,
+    singleDigit: steps[steps.length - 1],
+  };
+}
+
+// Run test for N = 260
+const N = 260n;
+const T1 = createFraction(N * 3n, 1n);
+const c1 = cycle(T1);
+const S1 = add(add(c1.right, c1.mid), c1.left);
+const S1_div_3 = div(S1, createFraction(3n, 1n));
+const p1_sqrt = evalSqrt10(S1_div_3);
+const R1 = p1_sqrt.sum;
+
+console.log('Phase 1 S1:', `${S1.num}/${S1.den}`);
+console.log('Phase 1 S1/3:', `${S1_div_3.num}/${S1_div_3.den}`);
+console.log('Phase 1 Sqrt:', p1_sqrt.decimal, 'Sum =', R1);
+
+// Phase 2
+const T2 = createFraction(BigInt(R1), 1n);
+const c2 = cycle(T2);
+const S2 = add(add(c2.right, c2.mid), c2.left);
+const S2_div_3 = div(S2, createFraction(3n, 1n));
+
+console.log('\nPhase 2 Slots:');
+console.log('Right:', `${c2.right.num}/${c2.right.den}`);
+console.log('Mid:', `${c2.mid.num}/${c2.mid.den}`);
+console.log('Left:', `${c2.left.num}/${c2.left.den}`);
+console.log('S2:', `${S2.num}/${S2.den}`);
+
+console.log('\nMode 1 (S2 + sqrt):', evalSqrt10(S2));
+console.log('Mode 2 (S2/3 + sqrt):', evalSqrt10(S2_div_3));
+console.log('Mode 3 (S2 no sqrt):', evalNoSqrt10(S2));
+console.log('Mode 4 (S2/3 no sqrt):', evalNoSqrt10(S2_div_3));

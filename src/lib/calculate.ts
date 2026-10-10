@@ -1,282 +1,247 @@
 /**
  * Dual-Phase Arabic Arbitrary-Precision Math Calculation Engine
- * المحرك الحسابي ثنائي المراحل فائق الدقة (بدون تقريب)
+ * المحرك الحسابي ثنائي المراحل فائق الدقة المعتمد على BigInt واختزال gcd بدون أي تقريب
  */
 
-import { Fraction, DecimalSquareRootResult, ONE, HUNDRED } from './fractionMath';
-import { normalizeArabicText, normalizeChar } from './rules';
 import {
-  SlotData,
+  FractionType,
+  CycleResult,
+  createFraction,
+  addFractions,
+  divFractions,
+  cycle,
+  evaluateFractionWithSqrt10,
+  evaluateFractionNoSqrt10,
+  generateStepsTable,
+  fractionToString,
+  Fraction,
+} from './fractionMath';
+import { parseInputN, normalizeArabicText, normalizeChar } from './rules';
+import {
   Phase1Summary,
   Phase2Summary,
   CalculationState,
+  SlotPhase2,
+  SlotData,
 } from '../types/math';
 
-export { normalizeChar };
-export type { SlotData, Phase1Summary, Phase2Summary, CalculationState };
+export { normalizeChar, cycle, createFraction, fractionToString };
+export type { Phase1Summary, Phase2Summary, CalculationState, SlotPhase2, SlotData };
 
 // Aliases for backwards compatibility
-export type PhaseSlotDetail = SlotData;
 export type DualPhaseResult = CalculationState;
 export type CalculationResult = CalculationState;
+export type PhaseSlotDetail = SlotData;
 
 /**
- * Execute Phase 1: Silent Engine (القسم الأول المخفي)
- * Initial slot value = 42.
- * Produces the seed value (unsimplified digit sum of square root).
+ * 2) تنفيذ المرحلة 1 (تصحيح الخطأ):
+ * - المدخل N (مثلاً 260) يوضع في كل خانة من الخانات الثلاث، و T1 = 3*N (مثلاً 780).
+ * - نفّذ cycle(T1) ثم اجمع الثلاثة: S1.
+ * - نفّذ: S1 ÷ 3 ← جذر تربيعي ← أول 10 خانات بعد الفاصلة (قطع وليس تقريب، مع الاحتفاظ بالأصفار البادئة) ← مجموع هذه الخانات = R1.
+ * - R1 يبقى كما هو (لا يُختزل لرقم واحد).
  */
-export function executePhase1(chars: string[]): Phase1Summary {
-  const n = chars.length;
-  if (n === 0) {
-    throw new Error('قائمة الحروف فارغة');
-  }
+export function executePhase1(
+  inputN: bigint,
+  slotChars: [string, string, string] = ['م', 'د', 'د']
+): Phase1Summary {
+  const t1 = inputN * 3n;
+  const t1Frac = createFraction(t1, 1n);
 
-  // الخطوة 1: وضع القيمة الأساسية (42) على كل خانة بدلاً من التجميع الفردي (42 × n)
-  const step1Val = 42;
-  const step1Vals: number[] = Array(n).fill(step1Val);
-  const sum1 = new Fraction(BigInt(n * step1Val), ONE);
+  // دالة الدورة لـ T1
+  const cycleResult = cycle(t1Frac);
 
-  // الخطوة 2: عدد طبيعي (i ÷ n) × i = i^2 / n
-  const step2Fractions = chars.map((_, i) => {
-    const idx = BigInt(i + 1);
-    return new Fraction(idx * idx, BigInt(n));
-  });
-  let sum2 = new Fraction(0n, ONE);
-  step2Fractions.forEach(f => {
-    sum2 = sum2.add(f);
-  });
+  // S1 = right + mid + left
+  const sum1 = addFractions(addFractions(cycleResult.right, cycleResult.mid), cycleResult.left);
 
-  // الخطوة 3: (قيمة خطوة 2 ÷ S2) × S1
-  const step3Fractions = step2Fractions.map(v2 => v2.div(sum2).mul(sum1));
-  const v3_last = step3Fractions[n - 1];
+  // S1 ÷ 3
+  const average1 = divFractions(sum1, createFraction(3n, 1n));
 
-  // الخطوة 4: جمع طبيعي لنواتج خطوة 3 للأحرف المتماثلة
-  const charGroups: Record<string, Fraction> = {};
-  chars.forEach((c, idx) => {
-    const v3 = step3Fractions[idx];
-    charGroups[c] = charGroups[c] ? charGroups[c].add(v3) : v3;
-  });
+  // جذر تربيعي واستخراج أول 10 خانات بعد الفاصلة (قطع)
+  const sqrtResult = evaluateFractionWithSqrt10(
+    average1,
+    0,
+    'جذر S1 ÷ 3 (المرحلة 1)',
+    'استخراج أول 10 خانات بعد الفاصلة لحساب R1'
+  );
 
-  // الخطوة 5: (قيمة خطوة 3 ÷ آخر خانة من خطوة 3) × 100
-  const step5Fractions = step3Fractions.map(v3 => {
-    if (v3_last.isZero()) return new Fraction(0n, ONE);
-    return v3.div(v3_last).mul(new Fraction(HUNDRED, ONE));
-  });
-  let sum5 = new Fraction(0n, ONE);
-  step5Fractions.forEach(f => {
-    sum5 = sum5.add(f);
-  });
+  // R1 = مجموع الخانات العشر بعد الفاصلة (يبقى كما هو، لا يُختزل لرقم واحد)
+  const r1 = sqrtResult.unsimplifiedSum;
 
-  // الخطوة 6: النسب المئوية وضربها بقيم الحروف من خطوة 4
-  const step6RatioFractions = step5Fractions.map(v5 => {
-    if (sum5.isZero()) return new Fraction(0n, ONE);
-    return v5.div(sum5).mul(new Fraction(HUNDRED, ONE));
-  });
-
-  const step6Fractions = chars.map((c, idx) => {
-    const charGroupVal = charGroups[c];
-    const ratio = step6RatioFractions[idx];
-    return charGroupVal.mul(ratio).div(new Fraction(HUNDRED, ONE));
-  });
-
-  // الناتج النهائي للقسم الأول: جمع الخانات ÷ عدد الخانات
-  let totalSum = new Fraction(0n, ONE);
-  step6Fractions.forEach(f => {
-    totalSum = totalSum.add(f);
-  });
-  const average = totalSum.div(new Fraction(BigInt(n), ONE));
-
-  // الجذر التربيعي واستخراج أول 10 أرقام بعد الفاصلة
-  const sqrtResult = average.sqrtDecimal(60);
-  // الحماية في حال كانت البذرة 0 (مثلاً إذا كان الناتج عدداً صحيحاً تاماً)
-  const seed = sqrtResult.unsimplifiedSum > 0 ? sqrtResult.unsimplifiedSum : 1;
+  const stepsTable = generateStepsTable(t1Frac, slotChars);
 
   return {
-    step1Val,
-    step1Vals,
+    inputN,
+    t1,
+    cycle: cycleResult,
     sum1,
-    sum2,
-    step3Fractions,
-    sum5,
-    step6Fractions,
-    totalSum,
-    average,
+    average1,
     sqrtResult,
-    seed,
+    r1,
+    seed: r1,
+    step1Val: Number(inputN),
+    stepsTable,
   };
 }
 
 /**
- * Execute Phase 2: Visible Engine (القسم الثاني الظاهر والتفاعلي)
- * Initial slot value = Seed from Phase 1.
- * Supports interactive slot selection ("زر الانتقال").
+ * 3) تنفيذ المرحلة 2:
+ * - T2 = R1 مباشرة (وليس 3*R1).
+ * - نفّذ cycle(T2) واعرض الكسور الثلاثة (right, mid, left)
+ * - لكل كسر: خانة تحديد (checkbox) مفعّلة افتراضياً وزر "انتقال"
+ * - S2 = مجموع الكسور المحددة فقط. أعد حسابه فوراً عند تغيير التحديد.
+ * - اعرض 4 أوضاع، لكل منها: الكسر الناتج، القيمة العشرية، مجموع الخانات العشر، والاختزال لرقم واحد:
+ *   1. S2 ← √ ← 10 خانات
+ *   2. S2 ÷ (عدد الخانات المحددة) ← √ ← 10 خانات
+ *   3. S2 ← 10 خانات
+ *   4. S2 ÷ (عدد الخانات المحددة) ← 10 خانات
  */
 export function executePhase2(
-  chars: string[],
-  rawChars: string[],
-  seed: number,
-  selectedIndices?: number[]
+  r1: number,
+  slotChars: [string, string, string] = ['م', 'د', 'د'],
+  selectedIndices: number[] = [0, 1, 2]
 ): Phase2Summary {
-  const n = chars.length;
-  if (n === 0) {
-    throw new Error('قائمة الحروف فارغة');
-  }
+  // T2 = R1 مباشرة
+  const t2 = BigInt(r1);
+  const t2Frac = createFraction(t2, 1n);
 
-  // الخطوة 1: نضع القيمة البذرية المعتمدة (S1 = Seed)
-  const step1Val = seed;
-  const sum1 = new Fraction(BigInt(step1Val), ONE);
+  // cycle(T2)
+  const cycleResult = cycle(t2Frac);
 
-  // الخطوة 2: عدد طبيعي (i ÷ n) × i = i^2 / n
-  const step2Fractions = chars.map((_, i) => {
-    const idx = BigInt(i + 1);
-    return new Fraction(idx * idx, BigInt(n));
-  });
-  let sum2 = new Fraction(0n, ONE);
-  step2Fractions.forEach(f => {
-    sum2 = sum2.add(f);
-  });
+  const slotItems: SlotPhase2[] = [
+    {
+      id: 'right',
+      pos: 1,
+      name: 'اليمين',
+      char: slotChars[0],
+      fraction: cycleResult.right,
+      fractionString: fractionToString(cycleResult.right),
+      isSelected: selectedIndices.includes(0),
+    },
+    {
+      id: 'mid',
+      pos: 2,
+      name: 'الوسط',
+      char: slotChars[1],
+      fraction: cycleResult.mid,
+      fractionString: fractionToString(cycleResult.mid),
+      isSelected: selectedIndices.includes(1),
+    },
+    {
+      id: 'left',
+      pos: 3,
+      name: 'اليسار',
+      char: slotChars[2],
+      fraction: cycleResult.left,
+      fractionString: fractionToString(cycleResult.left),
+      isSelected: selectedIndices.includes(2),
+    },
+  ];
 
-  // الخطوة 3: (قيمة خطوة 2 ÷ S2) × S1
-  const step3Fractions = step2Fractions.map(v2 => v2.div(sum2).mul(sum1));
-  const v3_last = step3Fractions[n - 1];
-
-  // الخطوة 4: جمع طبيعي لنواتج خطوة 3 للأحرف المتماثلة
-  const charGroups: Record<string, Fraction> = {};
-  chars.forEach((c, idx) => {
-    const v3 = step3Fractions[idx];
-    charGroups[c] = charGroups[c] ? charGroups[c].add(v3) : v3;
-  });
-
-  // الخطوة 5: (قيمة خطوة 3 ÷ آخر خانة من خطوة 3) × 100
-  const step5Fractions = step3Fractions.map(v3 => {
-    if (v3_last.isZero()) return new Fraction(0n, ONE);
-    return v3.div(v3_last).mul(new Fraction(HUNDRED, ONE));
-  });
-  let sum5 = new Fraction(0n, ONE);
-  step5Fractions.forEach(f => {
-    sum5 = sum5.add(f);
-  });
-
-  // الخطوة 6: النسب المئوية وضربها بقيم الحروف من خطوة 4
-  const step6RatioFractions = step5Fractions.map(v5 => {
-    if (sum5.isZero()) return new Fraction(0n, ONE);
-    return v5.div(sum5).mul(new Fraction(HUNDRED, ONE));
-  });
-
-  const defaultSelected = selectedIndices ?? chars.map((_, i) => i);
-
-  const slots: PhaseSlotDetail[] = chars.map((c, idx) => {
-    const pos = idx + 1;
-    const charGroupVal = charGroups[c];
-    const ratio = step6RatioFractions[idx];
-    const finalValue = charGroupVal.mul(ratio).div(new Fraction(HUNDRED, ONE));
-    const isSelected = defaultSelected.includes(idx);
-
-    return {
-      pos,
-      char: c,
-      originalChar: rawChars[idx] || c,
-      step1Val,
-      step2Frac: step2Fractions[idx],
-      step2Formula: `${pos} ÷ ${n} × ${pos}`,
-      step3Frac: step3Fractions[idx],
-      step3Formula: `${step2Fractions[idx].toString()} ÷ ${sum2.toString()} × ${sum1.toString()}`,
-      step4GroupFrac: charGroupVal,
-      step5Frac: step5Fractions[idx],
-      step5Formula: `${step3Fractions[idx].toString()} ÷ ${v3_last.toString()} × 100`,
-      step6RatioFrac: ratio,
-      step6Formula: `${step5Fractions[idx].toString()} ÷ ${sum5.toString()} × 100`,
-      finalValueFrac: finalValue,
-      finalFormula: `${charGroupVal.toString()} × ${ratio.toPercentageString()}`,
-      isSelected,
-    };
-  });
-
-  // حساب الناتج النهائي بناءً على الخانات المحددة ("زر الانتقال")
-  const selectedSlots = slots.filter(s => s.isSelected);
+  const selectedSlots = slotItems.filter(s => s.isSelected);
   const selectedCount = selectedSlots.length;
 
-  let selectedSum = new Fraction(0n, ONE);
-  if (selectedCount > 0) {
-    selectedSlots.forEach(s => {
-      selectedSum = selectedSum.add(s.finalValueFrac);
-    });
-  }
+  // S2 = مجموع الكسور المحددة فقط
+  let selectedSum = createFraction(0n, 1n);
+  selectedSlots.forEach(s => {
+    selectedSum = addFractions(selectedSum, s.fraction);
+  });
 
-  const divisor = selectedCount > 0 ? selectedCount : 1;
-  const selectedAverage = selectedSum.div(new Fraction(BigInt(divisor), ONE));
+  const divisor = selectedCount > 0 ? BigInt(selectedCount) : 1n;
+  const selectedAverage = divFractions(selectedSum, createFraction(divisor, 1n));
 
-  // 1. الجواب الأول: جمع قيم الخانات الكلية ➔ أخذ الجذر التربيعي (Square Root) للمجموع (بدون قسمة)
-  const directSumSqrtResult = selectedSum.sqrtDecimal(60);
+  // 1. S2 ← √ ← 10 خانات
+  const mode1 = evaluateFractionWithSqrt10(
+    selectedSum,
+    1,
+    'الوضع 1: الجذر التربيعي لمجموع الخانات المحددة',
+    'S2 ← √ ← أول 10 خانات بعد الفاصلة'
+  );
 
-  // 2. الجواب الثاني: جمع قيم الخانات الكلية ➔ التقسيم على عدد الخانات ➔ أخذ الجذر التربيعي (Square Root) للناتج
-  const sqrtResult = selectedAverage.sqrtDecimal(60);
+  // 2. S2 ÷ (عدد الخانات المحددة) ← √ ← 10 خانات
+  const mode2 = evaluateFractionWithSqrt10(
+    selectedAverage,
+    2,
+    'الوضع 2: الجذر التربيعي لـ (المجموع ÷ عدد الخانات)',
+    'S2 ÷ (عدد الخانات المحددة) ← √ ← أول 10 خانات بعد الفاصلة'
+  );
 
-  // 3. الجواب الثالث: جمع قيم الخانات الكلية فقط ➔ بدون جذر تربيعي (No Square Root)
-  const directDecimalResult = selectedSum.toDecimal(60);
+  // 3. S2 ← 10 خانات (بدون جذر)
+  const mode3 = evaluateFractionNoSqrt10(
+    selectedSum,
+    3,
+    'الوضع 3: مجموع الخانات المحددة (بدون جذر)',
+    'S2 ← أول 10 خانات بعد الفاصلة'
+  );
 
-  // 4. الجواب الرابع: جمع قيم الخانات الكلية ➔ التقسيم على عدد الخانات ➔ بدون جذر تربيعي (No Square Root)
-  const averageDecimalResult = selectedAverage.toDecimal(60);
+  // 4. S2 ÷ (عدد الخانات المحددة) ← 10 خانات (بدون جذر)
+  const mode4 = evaluateFractionNoSqrt10(
+    selectedAverage,
+    4,
+    'الوضع 4: (المجموع ÷ عدد الخانات) (بدون جذر)',
+    'S2 ÷ (عدد الخانات المحددة) ← أول 10 خانات بعد الفاصلة'
+  );
+
+  const stepsTable = generateStepsTable(t2Frac, slotChars);
 
   return {
-    step1Val,
-    sum1,
-    sum2,
-    slots,
+    t2,
+    cycle: cycleResult,
+    slots: slotItems,
     selectedCount,
     selectedSum,
     selectedAverage,
+    mode1,
+    mode2,
+    mode3,
+    mode4,
+    stepsTable,
 
-    // 1. الجواب الأول: مجموع الخانات المحددة ➔ الجذر التربيعي (بدون قسمة)
-    directSumSqrtResult,
-    directSumUnsimplifiedAnswer: directSumSqrtResult.unsimplifiedSum,
-    directSumSimplifiedAnswer: directSumSqrtResult.simplifiedSingleDigit,
-    directSumReductionSteps: directSumSqrtResult.reductionSteps,
+    // Aliases for backwards compatibility with existing UI views
+    directSumSqrtResult: mode1,
+    directSumUnsimplifiedAnswer: mode1.unsimplifiedSum,
+    directSumSimplifiedAnswer: mode1.simplifiedSingleDigit,
+    directSumReductionSteps: mode1.reductionSteps,
 
-    // 2. الجواب الثاني: (المجموع ÷ عدد الخانات) ➔ الجذر التربيعي
-    sqrtResult,
-    unsimplifiedAnswer: sqrtResult.unsimplifiedSum,
-    simplifiedAnswer: sqrtResult.simplifiedSingleDigit,
-    reductionSteps: sqrtResult.reductionSteps,
+    sqrtResult: mode2,
+    unsimplifiedAnswer: mode2.unsimplifiedSum,
+    simplifiedAnswer: mode2.simplifiedSingleDigit,
+    reductionSteps: mode2.reductionSteps,
 
-    // 3. الجواب الثالث: مجموع الخانات المحددة فقط ➔ بدون جذر تربيعي (No Square Root)
-    directDecimalResult,
-    directDecimalUnsimplifiedAnswer: directDecimalResult.unsimplifiedSum,
-    directDecimalSimplifiedAnswer: directDecimalResult.simplifiedSingleDigit,
-    directDecimalReductionSteps: directDecimalResult.reductionSteps,
+    directDecimalResult: mode3,
+    directDecimalUnsimplifiedAnswer: mode3.unsimplifiedSum,
+    directDecimalSimplifiedAnswer: mode3.simplifiedSingleDigit,
+    directDecimalReductionSteps: mode3.reductionSteps,
 
-    // 4. الجواب الرابع: (المجموع ÷ عدد الخانات) ➔ بدون جذر تربيعي (No Square Root)
-    averageDecimalResult,
-    averageDecimalUnsimplifiedAnswer: averageDecimalResult.unsimplifiedSum,
-    averageDecimalSimplifiedAnswer: averageDecimalResult.simplifiedSingleDigit,
-    averageDecimalReductionSteps: averageDecimalResult.reductionSteps,
+    averageDecimalResult: mode4,
+    averageDecimalUnsimplifiedAnswer: mode4.unsimplifiedSum,
+    averageDecimalSimplifiedAnswer: mode4.simplifiedSingleDigit,
+    averageDecimalReductionSteps: mode4.reductionSteps,
+
+    step1Val: r1,
+    sum1: t2Frac,
+    sum2: createFraction(14n, 3n),
   };
 }
 
 /**
- * Main Calculator Execution Function: Dual-Phase Process
- * يربط بين القسم الأول (المحرك البذري) والقسم الثاني (المحرك التفاعلي)
+ * دالة الحساب الكلية للمشروع: Dual-Phase Arabic Engine
  */
 export function calculateArabicDualPhase(
   text: string,
-  selectedIndices?: number[],
+  selectedIndices: number[] = [0, 1, 2],
   customSeed?: number
 ): DualPhaseResult {
-  const { rawChars, normalizedChars } = normalizeArabicText(text);
-  const totalChars = normalizedChars.length;
+  const { inputN, wordText, slotChars } = parseInputN(text);
+  const { normalizedChars, rawChars } = normalizeArabicText(text);
 
-  if (totalChars < 2) {
-    throw new Error('الرجاء إدخال كلمة أو نص يحتوي على حرفين على الأقل للتحليل');
-  }
+  // 1. تشغيل المرحلة 1
+  const phase1 = executePhase1(inputN, slotChars);
 
-  // 1. تشغيل القسم الأول للحصول على البذرة (Seed)
-  const phase1 = executePhase1(normalizedChars);
+  // استخدام R1 الناتج (أو customSeed في حال تمريره)
+  const r1ToUse = customSeed !== undefined ? customSeed : phase1.r1;
 
-  // استخدام البذرة المحسوبة تلقائياً من القسم الأول (أو customSeed في حال تمريره)
-  const seedToUse = customSeed !== undefined ? customSeed : phase1.seed;
-
-  // 2. تشغيل القسم الثاني باستخدام البذرة والتحكم بأزرار الانتقال
-  const phase2 = executePhase2(normalizedChars, rawChars, seedToUse, selectedIndices);
+  // 2. تشغيل المرحلة 2
+  const phase2 = executePhase2(r1ToUse, slotChars, selectedIndices);
 
   const activeSelectedIndices = phase2.slots
     .filter(s => s.isSelected)
@@ -284,9 +249,11 @@ export function calculateArabicDualPhase(
 
   return {
     inputText: text,
-    normalizedChars,
-    rawChars,
-    totalChars,
+    inputN,
+    slotChars,
+    normalizedChars: normalizedChars.length > 0 ? normalizedChars : [...slotChars],
+    rawChars: rawChars.length > 0 ? rawChars : [...slotChars],
+    totalChars: 3,
     phase1,
     phase2,
     selectedIndices: activeSelectedIndices,
@@ -295,5 +262,3 @@ export function calculateArabicDualPhase(
 
 // Backwards compatibility
 export const calculateArabicPower = calculateArabicDualPhase;
-
-
