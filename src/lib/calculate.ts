@@ -22,7 +22,7 @@ export type CalculationResult = CalculationState;
 
 /**
  * Execute Phase 1: Silent Engine (القسم الأول المخفي)
- * Initial slot value = 42.
+ * Initial slot value = 260.
  * Produces the seed value (unsimplified digit sum of square root).
  */
 export function executePhase1(chars: string[]): Phase1Summary {
@@ -31,8 +31,8 @@ export function executePhase1(chars: string[]): Phase1Summary {
     throw new Error('قائمة الحروف فارغة');
   }
 
-  // الخطوة 1: وضع القيمة الأساسية (42) على كل خانة بدلاً من التجميع الفردي (42 × n)
-  const step1Val = 42;
+  // الخطوة 1: وضع القيمة الأساسية (260) على كل خانة بدلاً من 42 ثم تجميع الخانات (260 × n)
+  const step1Val = 260;
   const step1Vals: number[] = Array(n).fill(step1Val);
   const sum1 = new Fraction(BigInt(n * step1Val), ONE);
 

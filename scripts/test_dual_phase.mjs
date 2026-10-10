@@ -103,8 +103,8 @@ class Fraction {
 function runDualPhase(chars, selectedIndices = null) {
   const n = chars.length;
 
-  // --- PHASE 1 (Initial = 42 for each slot) ---
-  const s1_p1 = new Fraction(BigInt(n * 42), ONE);
+  // --- PHASE 1 (Initial = 260 for each slot) ---
+  const s1_p1 = new Fraction(BigInt(n * 260), ONE);
   const step2_p1 = chars.map((_, i) => new Fraction(BigInt((i + 1) * (i + 1)), BigInt(n)));
   let sum2_p1 = new Fraction(0n, ONE);
   step2_p1.forEach(f => sum2_p1 = sum2_p1.add(f));
